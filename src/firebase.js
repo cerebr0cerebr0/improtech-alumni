@@ -1,8 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
-// ⚠️ REMPLACE CES VALEURS PAR TON CONFIG FIREBASE
-// Tu trouves ces valeurs dans : Firebase Console → Project Settings → Ton app web
 const firebaseConfig = {
   apiKey: "AIzaSyAB2W4MtpUymcGukOZB6RsualHnhRkowdQ",
   authDomain: "improtech-alumni.firebaseapp.com",
@@ -15,3 +14,4 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
