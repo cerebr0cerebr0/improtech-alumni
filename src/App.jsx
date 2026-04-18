@@ -50,7 +50,7 @@ function Loading() {
 
 // ─── LOGO / HEADER HELPERS ────────────────────────────────────────────────
 function LogoIcon({ size = 40 }) {
-  return <div style={{ width: size, height: size, borderRadius: size * 0.25, background: `linear-gradient(135deg, ${B.gold}, ${B.teal})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.5, fontWeight: 900, color: B.purple, flexShrink: 0, fontFamily: "'Sora', sans-serif" }}>I</div>;
+  return <img src="/improtech-alumni/logo.png" alt="IMPROTECH" style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} />;
 }
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────────
