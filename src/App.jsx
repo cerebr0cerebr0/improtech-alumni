@@ -64,7 +64,7 @@ function LoginPage() {
     if (!email || !password) return;
     setLoading(true); setError("");
     try { await signInWithEmailAndPassword(auth, email, password); }
-    catch { setError("Email ou mot de passe incorrect."); setLoading(false); }
+    catch { setError("Incorrect email or password."); setLoading(false); }
   };
 
   return (
@@ -74,20 +74,20 @@ function LoginPage() {
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <LogoIcon size={60} />
           <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, color: B.white, marginTop: 14 }}>IMPROTECH Alumni</div>
-          <div style={{ fontSize: 13, color: B.gray, marginTop: 4 }}>Connecte-toi à ta communauté</div>
+          <div style={{ fontSize: 13, color: B.gray, marginTop: 4 }}>Connect to your community</div>
         </div>
         <div style={{ background: B.purpleMid, borderRadius: 20, padding: 32, border: `1px solid ${B.purpleLight}44` }}>
-          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 18, fontWeight: 800, color: B.white, marginBottom: 24 }}>Connexion</div>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 18, fontWeight: 800, color: B.white, marginBottom: 24 }}>Sign In</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div><label style={lStyle}>Email</label><input style={iStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ton@email.com" onKeyDown={e => e.key === "Enter" && handleLogin()} /></div>
-            <div><label style={lStyle}>Mot de passe</label><input style={iStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} /></div>
+            <div><label style={lStyle}>Email</label><input style={iStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e => e.key === "Enter" && handleLogin()} /></div>
+            <div><label style={lStyle}>Password</label><input style={iStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} /></div>
             {error && <div style={{ background: `${B.red}22`, border: `1px solid ${B.red}44`, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: B.red }}>{error}</div>}
             <button onClick={handleLogin} disabled={loading || !email || !password} style={{ padding: "13px", borderRadius: 12, border: "none", cursor: email && password ? "pointer" : "default", background: email && password ? `linear-gradient(135deg, ${B.gold}, ${B.goldLight})` : B.darkGray, color: email && password ? B.purple : B.gray, fontWeight: 800, fontSize: 15, fontFamily: "'Sora', sans-serif" }}>
-              {loading ? "Connexion..." : "→ Se connecter"}
+              {loading ? "Signing in..." : "→ Sign In"}
             </button>
           </div>
         </div>
-        <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: B.gray }}>Tu n'as pas encore de compte ? Contacte un admin pour recevoir ton lien d'inscription.</div>
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: B.gray }}>Don't have an account yet? Contact an admin to receive your registration link.</div>
       </div>
     </div>
   );
@@ -127,7 +127,7 @@ function RegisterPage() {
         <div style={{ fontSize:64,marginBottom:20 }}>🎉</div>
         <div style={{ fontFamily:"'Sora', sans-serif",fontSize:26,fontWeight:800,color:B.white,marginBottom:12 }}>Bienvenue {form.name.split(" ")[0]} !</div>
         <div style={{ fontSize:15,color:B.gray,lineHeight:1.7,marginBottom:24 }}>Ton profil a été créé. Connecte-toi maintenant avec ton email et ton mot de passe !</div>
-        <button onClick={() => window.location.href = window.location.pathname} style={{ padding:"12px 28px",borderRadius:12,background:`linear-gradient(135deg, ${B.gold}, ${B.goldLight})`,color:B.purple,fontWeight:800,fontSize:15,border:"none",cursor:"pointer",fontFamily:"'Sora', sans-serif" }}>→ Se connecter</button>
+        <button onClick={() => window.location.href = window.location.pathname} style={{ padding:"12px 28px",borderRadius:12,background:`linear-gradient(135deg, ${B.gold}, ${B.goldLight})`,color:B.purple,fontWeight:800,fontSize:15,border:"none",cursor:"pointer",fontFamily:"'Sora', sans-serif" }}>→ Sign In</button>
       </div>
     </div>
   );
@@ -146,8 +146,8 @@ function RegisterPage() {
         </div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:14 }}>
           <div style={{ gridColumn:"1/-1" }}><label style={lStyle}>Nom complet *</label><input style={iStyle} value={form.name} onChange={e => set("name",e.target.value)} placeholder="Ex: Jean Dupont" /></div>
-          <div style={{ gridColumn:"1/-1" }}><label style={lStyle}>Email * (sera ton identifiant)</label><input style={iStyle} type="email" value={form.email} onChange={e => set("email",e.target.value)} placeholder="ton@email.com" /></div>
-          <div><label style={lStyle}>Mot de passe * (min. 6 caractères)</label><input style={iStyle} type="password" value={form.password} onChange={e => set("password",e.target.value)} placeholder="••••••••" /></div>
+          <div style={{ gridColumn:"1/-1" }}><label style={lStyle}>Email * (sera ton identifiant)</label><input style={iStyle} type="email" value={form.email} onChange={e => set("email",e.target.value)} placeholder="your@email.com" /></div>
+          <div><label style={lStyle}>Password * (min. 6 caractères)</label><input style={iStyle} type="password" value={form.password} onChange={e => set("password",e.target.value)} placeholder="••••••••" /></div>
           <div><label style={lStyle}>Confirmer le mot de passe *</label><input style={iStyle} type="password" value={form.confirm} onChange={e => set("confirm",e.target.value)} placeholder="••••••••" /></div>
           {form.confirm && form.password !== form.confirm && <div style={{ gridColumn:"1/-1",background:`${B.red}22`,border:`1px solid ${B.red}44`,borderRadius:8,padding:"8px 12px",fontSize:12,color:B.red }}>Les mots de passe ne correspondent pas.</div>}
           <div><label style={lStyle}>Pays *</label><select style={iStyle} value={form.country} onChange={e => set("country",e.target.value)}><option value="">-- Sélectionner --</option>{COUNTRIES.map(c=><option key={c}>{c}</option>)}</select></div>
