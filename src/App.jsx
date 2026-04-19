@@ -50,11 +50,16 @@ function Loading() {
 
 // ─── LOGO / HEADER HELPERS ────────────────────────────────────────────────
 function LogoIcon({ size = 40 }) {
-  return <img src="/improtech-alumni/logo.png" alt="IMPROTECH" style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} />;
+  return (
+    <div style={{ width: size, height: size, borderRadius: size * 0.18, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: size * 0.06 }}>
+      <img src={`${import.meta.env.BASE_URL}logo.png`} alt="IMPROTECH" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+    </div>
+  );
 }
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────────
 function LoginPage() {
+  const [mode, setMode] = useState(null); // null | "admin" | "alumni"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -70,24 +75,61 @@ function LoginPage() {
   return (
     <div style={{ minHeight: "100vh", background: B.purple, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Inter', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800&display=swap'); * { box-sizing: border-box; } input::placeholder { color: #8B7FAA; }`}</style>
-      <div style={{ width: "100%", maxWidth: 400 }}>
+      <div style={{ width: "100%", maxWidth: 420 }}>
+        {/* Logo + title */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <LogoIcon size={60} />
-          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, color: B.white, marginTop: 14 }}>IMPROTECH Alumni</div>
+          <LogoIcon size={90} />
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 24, fontWeight: 800, color: B.white, marginTop: 16 }}>IMPROTECH Alumni</div>
           <div style={{ fontSize: 13, color: B.gray, marginTop: 4 }}>Connect to your community</div>
         </div>
-        <div style={{ background: B.purpleMid, borderRadius: 20, padding: 32, border: `1px solid ${B.purpleLight}44` }}>
-          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 18, fontWeight: 800, color: B.white, marginBottom: 24 }}>Sign In</div>
+
+        {/* Mode selector */}
+        {!mode && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div><label style={lStyle}>Email</label><input style={iStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e => e.key === "Enter" && handleLogin()} /></div>
-            <div><label style={lStyle}>Password</label><input style={iStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} /></div>
-            {error && <div style={{ background: `${B.red}22`, border: `1px solid ${B.red}44`, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: B.red }}>{error}</div>}
-            <button onClick={handleLogin} disabled={loading || !email || !password} style={{ padding: "13px", borderRadius: 12, border: "none", cursor: email && password ? "pointer" : "default", background: email && password ? `linear-gradient(135deg, ${B.gold}, ${B.goldLight})` : B.darkGray, color: email && password ? B.purple : B.gray, fontWeight: 800, fontSize: 15, fontFamily: "'Sora', sans-serif" }}>
-              {loading ? "Signing in..." : "→ Sign In"}
+            <button onClick={() => setMode("alumni")} style={{ padding: "18px 24px", borderRadius: 14, border: `1px solid ${B.teal}55`, background: `${B.teal}11`, cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.background = `${B.teal}22`}
+              onMouseLeave={e => e.currentTarget.style.background = `${B.teal}11`}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg, ${B.teal}, ${B.tealDark || "#008FA3"})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🎓</div>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 16, color: B.white }}>Alumni Login</div>
+                <div style={{ fontSize: 12, color: B.gray, marginTop: 2 }}>Access the alumni network & chat</div>
+              </div>
+              <div style={{ marginLeft: "auto", color: B.teal, fontSize: 20 }}>→</div>
+            </button>
+
+            <button onClick={() => setMode("admin")} style={{ padding: "18px 24px", borderRadius: 14, border: `1px solid ${B.gold}55`, background: `${B.gold}11`, cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.background = `${B.gold}22`}
+              onMouseLeave={e => e.currentTarget.style.background = `${B.gold}11`}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg, ${B.gold}, ${B.goldLight})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>👑</div>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 16, color: B.white }}>Admin Login</div>
+                <div style={{ fontSize: 12, color: B.gray, marginTop: 2 }}>Manage the platform & statistics</div>
+              </div>
+              <div style={{ marginLeft: "auto", color: B.gold, fontSize: 20 }}>→</div>
             </button>
           </div>
-        </div>
-        <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: B.gray }}>Don't have an account yet? Contact an admin to receive your registration link.</div>
+        )}
+
+        {/* Login form */}
+        {mode && (
+          <div style={{ background: B.purpleMid, borderRadius: 20, padding: 32, border: `1px solid ${mode === "admin" ? B.gold : B.teal}44` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+              <button onClick={() => { setMode(null); setEmail(""); setPassword(""); setError(""); }} style={{ background: "none", border: "none", color: B.gray, cursor: "pointer", fontSize: 18, padding: 0 }}>←</button>
+              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 18, fontWeight: 800, color: B.white }}>
+                {mode === "admin" ? "👑 Admin Sign In" : "🎓 Alumni Sign In"}
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div><label style={lStyle}>Email</label><input style={iStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e => e.key === "Enter" && handleLogin()} autoFocus /></div>
+              <div><label style={lStyle}>Password</label><input style={iStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} /></div>
+              {error && <div style={{ background: `${B.red}22`, border: `1px solid ${B.red}44`, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: B.red }}>{error}</div>}
+              <button onClick={handleLogin} disabled={loading || !email || !password} style={{ padding: "13px", borderRadius: 12, border: "none", cursor: email && password ? "pointer" : "default", background: email && password ? `linear-gradient(135deg, ${mode === "admin" ? B.gold : B.teal}, ${mode === "admin" ? B.goldLight : B.tealDark || "#008FA3"})` : B.darkGray, color: email && password ? (mode === "admin" ? B.purple : B.white) : B.gray, fontWeight: 800, fontSize: 15, fontFamily: "'Sora', sans-serif" }}>
+                {loading ? "Signing in..." : "→ Sign In"}
+              </button>
+            </div>
+            {mode === "alumni" && <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: B.gray }}>No account yet? Contact an admin to receive your registration link.</div>}
+          </div>
+        )}
       </div>
     </div>
   );
