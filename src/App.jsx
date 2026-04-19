@@ -480,6 +480,373 @@ function Stories({ alumni }) {
   );
 }
 
+
+// ─── JOB BOARD ────────────────────────────────────────────────────────────
+function JobBoard({ user, isAdmin }) {
+  const [jobs, setJobs] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [filter, setFilter] = useState("");
+  const [selected, setSelected] = useState(null);
+  const empty = { title: "", company: "", country: "", sector: "", type: "", cert: "", description: "", contact: "", salary: "" };
+  const [form, setForm] = useState(empty);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const TYPES = ["Full-time", "Part-time", "Contract", "Remote", "Internship"];
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "jobs"), snap => {
+      const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      setJobs(data.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)));
+    });
+    return unsub;
+  }, []);
+
+  const post = async () => {
+    if (!form.title || !form.company) return;
+    await addDoc(collection(db, "jobs"), { ...form, postedBy: user.email, postedByName: user.displayName || user.email.split("@")[0], createdAt: serverTimestamp(), applicants: [] });
+    setForm(empty); setShowAdd(false);
+  };
+
+  const deleteJob = async (id) => { if (window.confirm("Delete this job?")) await deleteDoc(doc(db, "jobs", id)); };
+
+  const filtered = filter ? jobs.filter(j => j.sector === filter || j.country === filter || j.type === filter) : jobs;
+  const typeColors = { "Full-time": B.green, "Part-time": B.teal, "Contract": B.gold, "Remote": B.purpleLight, "Internship": "#9C27B0" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>💼 Job Board</div>
+          <div style={{ color: B.gray, fontSize: 14, marginTop: 4 }}>Opportunities shared within the alumni network</div>
+        </div>
+        <button onClick={() => setShowAdd(!showAdd)} style={{ padding: "10px 20px", borderRadius: 10, background: `linear-gradient(135deg, ${B.gold}, ${B.goldLight})`, color: B.purple, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          {showAdd ? "✕ Cancel" : "+ Post a Job"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div style={{ background: B.purpleMid, borderRadius: 16, padding: 24, border: `1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Post a Job Opportunity</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><label style={lStyle}>Job Title *</label><input style={iStyle} value={form.title} onChange={e => set("title", e.target.value)} placeholder="e.g. Network Security Engineer" /></div>
+            <div><label style={lStyle}>Company *</label><input style={iStyle} value={form.company} onChange={e => set("company", e.target.value)} placeholder="e.g. Ecobank Ghana" /></div>
+            <div><label style={lStyle}>Country</label><select style={iStyle} value={form.country} onChange={e => set("country", e.target.value)}><option value="">-- Select --</option>{COUNTRIES.map(c => <option key={c}>{c}</option>)}</select></div>
+            <div><label style={lStyle}>Sector</label><select style={iStyle} value={form.sector} onChange={e => set("sector", e.target.value)}><option value="">-- Select --</option>{SECTORS.map(s => <option key={s}>{s}</option>)}</select></div>
+            <div><label style={lStyle}>Job Type</label><select style={iStyle} value={form.type} onChange={e => set("type", e.target.value)}><option value="">-- Select --</option>{TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
+            <div><label style={lStyle}>Certification Required</label><select style={iStyle} value={form.cert} onChange={e => set("cert", e.target.value)}><option value="">-- None --</option>{CERTS.map(c => <option key={c}>{c}</option>)}</select></div>
+            <div><label style={lStyle}>Salary (optional)</label><input style={iStyle} value={form.salary} onChange={e => set("salary", e.target.value)} placeholder="e.g. $2,000/month" /></div>
+            <div><label style={lStyle}>Contact / Apply</label><input style={iStyle} value={form.contact} onChange={e => set("contact", e.target.value)} placeholder="email or link" /></div>
+            <div style={{ gridColumn: "1/-1" }}><label style={lStyle}>Description *</label><textarea style={{ ...iStyle, resize: "vertical", minHeight: 90 }} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Describe the role, requirements, and how to apply..." /></div>
+          </div>
+          <button onClick={post} disabled={!form.title || !form.company || !form.description} style={{ marginTop: 14, padding: "11px 24px", borderRadius: 10, background: form.title && form.company ? `linear-gradient(135deg, ${B.gold}, ${B.goldLight})` : B.darkGray, color: form.title && form.company ? B.purple : B.gray, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+            ✓ Post Job
+          </button>
+        </div>
+      )}
+
+      {/* Filter pills */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button onClick={() => setFilter("")} style={{ padding: "6px 14px", borderRadius: 20, background: !filter ? B.gold : `${B.purpleLight}33`, color: !filter ? B.purple : B.gray, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>All ({jobs.length})</button>
+        {TYPES.filter(t => jobs.some(j => j.type === t)).map(t => (
+          <button key={t} onClick={() => setFilter(filter === t ? "" : t)} style={{ padding: "6px 14px", borderRadius: 20, background: filter === t ? typeColors[t] || B.teal : `${B.purpleLight}33`, color: filter === t ? "#fff" : B.gray, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>{t}</button>
+        ))}
+      </div>
+
+      {/* Job cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {filtered.map(j => {
+          const tc = typeColors[j.type] || B.gray;
+          return (
+            <div key={j.id} style={{ background: B.purpleMid, borderRadius: 16, padding: 22, border: `1px solid ${B.purpleLight}33`, borderLeft: `4px solid ${tc}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 17, color: B.white }}>{j.title}</div>
+                  <div style={{ fontSize: 14, color: B.gold, fontWeight: 600, marginTop: 2 }}>{j.company}</div>
+                  <div style={{ fontSize: 12, color: B.gray, marginTop: 4 }}>📍 {j.country} · Posted by {j.postedByName}</div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  {j.type && <span style={{ background: `${tc}22`, color: tc, border: `1px solid ${tc}44`, borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>{j.type}</span>}
+                  {j.salary && <span style={{ background: `${B.green}22`, color: B.green, border: `1px solid ${B.green}44`, borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>{j.salary}</span>}
+                  {(isAdmin || j.postedBy === user.email) && <button onClick={() => deleteJob(j.id)} style={{ background: "none", border: "none", color: B.gray, cursor: "pointer", fontSize: 14 }}>🗑</button>}
+                </div>
+              </div>
+              {j.cert && <div style={{ marginTop: 10 }}><span style={{ background: `${B.teal}22`, color: B.teal, border: `1px solid ${B.teal}44`, borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>Required: {j.cert}</span></div>}
+              <div style={{ fontSize: 13, color: B.offWhite, marginTop: 12, lineHeight: 1.6 }}>{selected === j.id ? j.description : j.description?.slice(0, 120) + (j.description?.length > 120 ? "..." : "")}</div>
+              <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                {j.description?.length > 120 && <button onClick={() => setSelected(selected === j.id ? null : j.id)} style={{ padding: "7px 14px", borderRadius: 8, background: `${B.purpleLight}33`, color: B.gray, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>{selected === j.id ? "Show less" : "Read more"}</button>}
+                {j.contact && <a href={j.contact.startsWith("http") ? j.contact : `mailto:${j.contact}`} target="_blank" rel="noreferrer" style={{ padding: "7px 18px", borderRadius: 8, background: `linear-gradient(135deg, ${B.gold}, ${B.goldLight})`, color: B.purple, textDecoration: "none", fontSize: 12, fontWeight: 700 }}>Apply →</a>}
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && <div style={{ textAlign: "center", padding: 60, color: B.gray }}><div style={{ fontSize: 40, marginBottom: 12 }}>💼</div><div>No jobs posted yet. Share an opportunity!</div></div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── MENTORSHIP ───────────────────────────────────────────────────────────
+function Mentorship({ user, userName, alumni }) {
+  const [mentors, setMentors] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [isMentor, setIsMentor] = useState(false);
+  const [form, setForm] = useState({ expertise: "", bio: "", availability: "" });
+  const [showForm, setShowForm] = useState(false);
+  const [reqForm, setReqForm] = useState({ mentorId: "", goal: "", message: "" });
+  const [showReq, setShowReq] = useState(null);
+  const [toast, showToast] = useToast();
+
+  useEffect(() => {
+    const unsub1 = onSnapshot(collection(db, "mentors"), snap => {
+      const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      setMentors(data);
+      setIsMentor(data.some(m => m.uid === user.uid));
+    });
+    const unsub2 = onSnapshot(collection(db, "mentorRequests"), snap => {
+      setRequests(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    });
+    return () => { unsub1(); unsub2(); };
+  }, []);
+
+  const registerMentor = async () => {
+    if (!form.expertise) return;
+    const alumniProfile = alumni.find(a => a.uid === user.uid || a.email === user.email);
+    await addDoc(collection(db, "mentors"), { uid: user.uid, email: user.email, name: userName, ...form, cert: alumniProfile?.cert || "", country: alumniProfile?.country || "", role: alumniProfile?.role || "", createdAt: serverTimestamp() });
+    setShowForm(false);
+    showToast("You are now registered as a mentor! 🎉");
+  };
+
+  const removeMentor = async () => {
+    const m = mentors.find(m => m.uid === user.uid);
+    if (m && window.confirm("Remove yourself as mentor?")) { await deleteDoc(doc(db, "mentors", m.id)); showToast("Removed from mentors.", "info"); }
+  };
+
+  const sendRequest = async (mentor) => {
+    if (!reqForm.goal) return;
+    await addDoc(collection(db, "mentorRequests"), { mentorId: mentor.id, mentorName: mentor.name, mentorEmail: mentor.email, requesterId: user.uid, requesterName: userName, requesterEmail: user.email, goal: reqForm.goal, message: reqForm.message, status: "pending", createdAt: serverTimestamp() });
+    setShowReq(null);
+    setReqForm({ mentorId: "", goal: "", message: "" });
+    showToast("Request sent! The mentor will be notified.");
+  };
+
+  const myRequests = requests.filter(r => r.requesterId === user.uid);
+  const requestsForMe = requests.filter(r => r.mentorEmail === user.email);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <Toast toast={toast} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>🎯 Mentorship</div>
+          <div style={{ color: B.gray, fontSize: 14, marginTop: 4 }}>Connect with experienced alumni for career guidance</div>
+        </div>
+        {!isMentor ? (
+          <button onClick={() => setShowForm(!showForm)} style={{ padding: "10px 20px", borderRadius: 10, background: `linear-gradient(135deg, ${B.teal}, ${B.tealDark})`, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            {showForm ? "✕ Cancel" : "🙋 Become a Mentor"}
+          </button>
+        ) : (
+          <button onClick={removeMentor} style={{ padding: "10px 20px", borderRadius: 10, background: `${B.red}22`, color: B.red, border: `1px solid ${B.red}44`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Remove me as mentor</button>
+        )}
+      </div>
+
+      {/* Become a mentor form */}
+      {showForm && !isMentor && (
+        <div style={{ background: B.purpleMid, borderRadius: 16, padding: 24, border: `1px solid ${B.teal}33` }}>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Register as a Mentor</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div><label style={lStyle}>Your Expertise *</label><input style={iStyle} value={form.expertise} onChange={e => setForm(f => ({ ...f, expertise: e.target.value }))} placeholder="e.g. Network Security, Cloud Architecture, CCIE prep" /></div>
+            <div><label style={lStyle}>Availability</label><input style={iStyle} value={form.availability} onChange={e => setForm(f => ({ ...f, availability: e.target.value }))} placeholder="e.g. Weekends, 2 hours/month" /></div>
+            <div><label style={lStyle}>Short Bio</label><textarea style={{ ...iStyle, resize: "vertical", minHeight: 70 }} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} placeholder="Tell mentees a bit about your background and how you can help..." /></div>
+          </div>
+          <button onClick={registerMentor} disabled={!form.expertise} style={{ marginTop: 14, padding: "11px 24px", borderRadius: 10, background: form.expertise ? `linear-gradient(135deg, ${B.teal}, ${B.tealDark})` : B.darkGray, color: form.expertise ? "#fff" : B.gray, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>✓ Register as Mentor</button>
+        </div>
+      )}
+
+      {/* Requests for me (if I am a mentor) */}
+      {requestsForMe.length > 0 && (
+        <div style={{ background: B.purpleMid, borderRadius: 16, padding: 20, border: `1px solid ${B.gold}33` }}>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 14, color: B.gold, marginBottom: 12 }}>📬 Mentorship Requests for You ({requestsForMe.length})</div>
+          {requestsForMe.map(r => (
+            <div key={r.id} style={{ padding: "12px 0", borderBottom: `1px solid ${B.purpleLight}33`, display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <Avatar name={r.requesterName} size={40} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: B.white, fontSize: 14 }}>{r.requesterName}</div>
+                <div style={{ fontSize: 12, color: B.gold, marginTop: 2 }}>Goal: {r.goal}</div>
+                {r.message && <div style={{ fontSize: 12, color: B.gray, marginTop: 4 }}>{r.message}</div>}
+                <a href={`mailto:${r.requesterEmail}`} style={{ display: "inline-block", marginTop: 8, padding: "6px 14px", borderRadius: 8, background: `linear-gradient(135deg, ${B.teal}, ${B.tealDark})`, color: "#fff", textDecoration: "none", fontSize: 12, fontWeight: 700 }}>Reply by Email →</a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* My requests sent */}
+      {myRequests.length > 0 && (
+        <div style={{ background: B.purpleMid, borderRadius: 16, padding: 20, border: `1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 12 }}>📤 My Mentorship Requests</div>
+          {myRequests.map(r => (
+            <div key={r.id} style={{ padding: "10px 0", borderBottom: `1px solid ${B.purpleLight}22`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div><div style={{ fontSize: 13, color: B.white, fontWeight: 600 }}>To: {r.mentorName}</div><div style={{ fontSize: 11, color: B.gray, marginTop: 2 }}>{r.goal}</div></div>
+              <span style={{ background: `${B.gold}22`, color: B.gold, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Pending</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Mentor list */}
+      <div>
+        <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Available Mentors ({mentors.length})</div>
+        {mentors.length === 0 && <div style={{ textAlign: "center", padding: 60, color: B.gray }}><div style={{ fontSize: 40, marginBottom: 12 }}>🎯</div><div>No mentors registered yet. Be the first!</div></div>}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+          {mentors.map(m => (
+            <div key={m.id} style={{ background: B.purpleMid, borderRadius: 16, padding: 22, border: `1px solid ${B.purpleLight}33`, borderTop: `3px solid ${B.teal}` }}>
+              <div style={{ display: "flex", gap: 14, marginBottom: 14 }}>
+                <Avatar name={m.name} size={52} />
+                <div>
+                  <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 15, color: B.white }}>{m.name}</div>
+                  <div style={{ fontSize: 12, color: B.gray, marginTop: 2 }}>{m.cert} · {m.country}</div>
+                  {m.role && <div style={{ fontSize: 12, color: B.teal, marginTop: 2 }}>{m.role}</div>}
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: B.gold, fontWeight: 600, marginBottom: 6 }}>Expertise: {m.expertise}</div>
+              {m.availability && <div style={{ fontSize: 12, color: B.gray, marginBottom: 8 }}>⏰ {m.availability}</div>}
+              {m.bio && <div style={{ fontSize: 12, color: B.offWhite, lineHeight: 1.5, marginBottom: 14 }}>{m.bio}</div>}
+              {m.uid !== user.uid ? (
+                <button onClick={() => setShowReq(m)} style={{ width: "100%", padding: "9px", borderRadius: 10, background: `linear-gradient(135deg, ${B.teal}, ${B.tealDark})`, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Request Mentorship →</button>
+              ) : (
+                <div style={{ textAlign: "center", fontSize: 12, color: B.gray, padding: "8px" }}>This is your mentor profile</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Request modal */}
+      {showReq && (
+        <div style={{ position: "fixed", inset: 0, background: "#00000088", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }} onClick={() => setShowReq(null)}>
+          <div style={{ background: B.purpleMid, borderRadius: 20, padding: 28, maxWidth: 440, width: "100%", border: `1px solid ${B.teal}44` }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 18, color: B.white, marginBottom: 6 }}>Request Mentorship</div>
+            <div style={{ fontSize: 13, color: B.gray, marginBottom: 20 }}>From: {showReq.name}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div><label style={lStyle}>Your Goal *</label><input style={iStyle} value={reqForm.goal} onChange={e => setReqForm(f => ({ ...f, goal: e.target.value }))} placeholder="e.g. Prepare for CCIE exam, career transition" autoFocus /></div>
+              <div><label style={lStyle}>Message (optional)</label><textarea style={{ ...iStyle, resize: "vertical", minHeight: 80 }} value={reqForm.message} onChange={e => setReqForm(f => ({ ...f, message: e.target.value }))} placeholder="Tell the mentor a bit more about your situation..." /></div>
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button onClick={() => sendRequest(showReq)} disabled={!reqForm.goal} style={{ flex: 1, padding: "12px", borderRadius: 10, background: reqForm.goal ? `linear-gradient(135deg, ${B.teal}, ${B.tealDark})` : B.darkGray, color: reqForm.goal ? "#fff" : B.gray, border: "none", fontWeight: 700, cursor: "pointer" }}>Send Request</button>
+              <button onClick={() => setShowReq(null)} style={{ padding: "12px 20px", borderRadius: 10, background: `${B.white}11`, color: B.gray, border: `1px solid ${B.purpleLight}44`, cursor: "pointer", fontWeight: 600 }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CERTIFICATION TRACKER ────────────────────────────────────────────────
+function CertTracker({ user, userName, isAdmin, allAlumni }) {
+  const [certs, setCerts] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ cert: "", status: "", date: "", expiry: "", score: "", notes: "", goal: false });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const STATUSES = ["In Progress", "Passed", "Failed", "Expired", "Goal"];
+  const statusColors = { "In Progress": B.gold, "Passed": B.green, "Failed": B.red, "Expired": B.gray, "Goal": B.teal };
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "certTracker"), snap => {
+      setCerts(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    });
+    return unsub;
+  }, []);
+
+  const add = async () => {
+    if (!form.cert || !form.status) return;
+    await addDoc(collection(db, "certTracker"), { ...form, uid: user.uid, userName, userEmail: user.email, createdAt: serverTimestamp() });
+    setForm({ cert: "", status: "", date: "", expiry: "", score: "", notes: "", goal: false });
+    setShowAdd(false);
+  };
+
+  const del = async (id) => { if (window.confirm("Delete?")) await deleteDoc(doc(db, "certTracker", id)); };
+
+  const myCerts = certs.filter(c => c.uid === user.uid);
+  const allCerts = isAdmin ? certs : myCerts;
+
+  // Admin overview: count by status
+  const statusCount = STATUSES.reduce((acc, s) => ({ ...acc, [s]: certs.filter(c => c.status === s).length }), {});
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>📜 Certification Tracker</div>
+          <div style={{ color: B.gray, fontSize: 14, marginTop: 4 }}>{isAdmin ? `All alumni certifications (${certs.length} entries)` : "Track your certifications and goals"}</div>
+        </div>
+        <button onClick={() => setShowAdd(!showAdd)} style={{ padding: "10px 20px", borderRadius: 10, background: `linear-gradient(135deg, ${B.gold}, ${B.goldLight})`, color: B.purple, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          {showAdd ? "✕ Cancel" : "+ Add Certification"}
+        </button>
+      </div>
+
+      {/* Admin overview */}
+      {isAdmin && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
+          {STATUSES.map(s => {
+            const col = statusColors[s];
+            return <div key={s} style={{ background: `${col}22`, border: `1px solid ${col}44`, borderRadius: 12, padding: "14px 16px", textAlign: "center" }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: col, fontFamily: "'Sora', sans-serif" }}>{statusCount[s] || 0}</div>
+              <div style={{ fontSize: 11, color: B.gray, marginTop: 2 }}>{s}</div>
+            </div>;
+          })}
+        </div>
+      )}
+
+      {showAdd && (
+        <div style={{ background: B.purpleMid, borderRadius: 16, padding: 24, border: `1px solid ${B.gold}33` }}>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Add a Certification</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><label style={lStyle}>Certification *</label><select style={iStyle} value={form.cert} onChange={e => set("cert", e.target.value)}><option value="">-- Select --</option>{CERTS.map(c => <option key={c}>{c}</option>)}</select></div>
+            <div><label style={lStyle}>Status *</label><select style={iStyle} value={form.status} onChange={e => set("status", e.target.value)}><option value="">-- Select --</option>{STATUSES.map(s => <option key={s}>{s}</option>)}</select></div>
+            <div><label style={lStyle}>Date Obtained</label><input style={iStyle} type="date" value={form.date} onChange={e => set("date", e.target.value)} /></div>
+            <div><label style={lStyle}>Expiry Date</label><input style={iStyle} type="date" value={form.expiry} onChange={e => set("expiry", e.target.value)} /></div>
+            <div><label style={lStyle}>Score (optional)</label><input style={iStyle} value={form.score} onChange={e => set("score", e.target.value)} placeholder="e.g. 850/1000" /></div>
+            <div><label style={lStyle}>Notes</label><input style={iStyle} value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Any notes..." /></div>
+          </div>
+          <button onClick={add} disabled={!form.cert || !form.status} style={{ marginTop: 14, padding: "11px 24px", borderRadius: 10, background: form.cert && form.status ? `linear-gradient(135deg, ${B.gold}, ${B.goldLight})` : B.darkGray, color: form.cert && form.status ? B.purple : B.gray, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>✓ Save</button>
+        </div>
+      )}
+
+      {/* Cert list */}
+      {!isAdmin && myCerts.length === 0 && !showAdd && (
+        <div style={{ textAlign: "center", padding: 60, color: B.gray }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📜</div>
+          <div>No certifications tracked yet. Add your first one!</div>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+        {allCerts.map(c => {
+          const col = statusColors[c.status] || B.gray;
+          const isExpiringSoon = c.expiry && new Date(c.expiry) < new Date(Date.now() + 90 * 86400000);
+          return (
+            <div key={c.id} style={{ background: B.purpleMid, borderRadius: 14, padding: 18, border: `1px solid ${B.purpleLight}33`, borderTop: `3px solid ${col}`, position: "relative" }}>
+              {isExpiringSoon && c.status === "Passed" && <div style={{ position: "absolute", top: 12, right: 12, background: `${B.red}22`, color: B.red, borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>⚠️ Expiring soon</div>}
+              <div style={{ fontWeight: 700, color: B.white, fontSize: 15, marginBottom: 4, fontFamily: "'Sora', sans-serif", paddingRight: isExpiringSoon ? 100 : 0 }}>{c.cert}</div>
+              {isAdmin && <div style={{ fontSize: 11, color: B.gray, marginBottom: 8 }}>👤 {c.userName}</div>}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                <span style={{ background: `${col}22`, color: col, border: `1px solid ${col}44`, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{c.status}</span>
+                {c.score && <span style={{ background: `${B.teal}22`, color: B.teal, border: `1px solid ${B.teal}44`, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Score: {c.score}</span>}
+              </div>
+              {c.date && <div style={{ fontSize: 12, color: B.gray }}>📅 Obtained: {c.date}</div>}
+              {c.expiry && <div style={{ fontSize: 12, color: isExpiringSoon ? B.red : B.gray, marginTop: 2 }}>⏳ Expires: {c.expiry}</div>}
+              {c.notes && <div style={{ fontSize: 12, color: B.offWhite, marginTop: 8, lineHeight: 1.5 }}>{c.notes}</div>}
+              {(c.uid === user.uid || isAdmin) && (
+                <button onClick={() => del(c.id)} style={{ marginTop: 10, padding: "5px 12px", borderRadius: 6, background: `${B.red}22`, color: B.red, border: `1px solid ${B.red}33`, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>Delete</button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── LAYOUT ───────────────────────────────────────────────────────────────
 function AppLayout({ user, userName, isAdmin, tabs, activeTab, setTab, children, rightActions }) {
   return (
@@ -529,6 +896,9 @@ function AlumniDashboard({ user, userName }) {
     { id: "chat", label: "Chat", icon: "💬" },
     { id: "stories", label: "Stories", icon: "★" },
     { id: "resources", label: "Resources", icon: "📚" },
+    { id: "jobs", label: "Jobs", icon: "💼" },
+    { id: "mentorship", label: "Mentorship", icon: "🎯" },
+    { id: "certs", label: "My Certs", icon: "📜" },
   ];
 
   if (loading) return <Loading />;
@@ -556,6 +926,9 @@ function AlumniDashboard({ user, userName }) {
       {tab === "chat" && <ChatPanel user={user} userName={userName} />}
       {tab === "stories" && <Stories alumni={alumni} />}
       {tab === "resources" && <ResourceLibrary user={user} isAdmin={false} />}
+      {tab === "jobs" && <JobBoard user={user} isAdmin={false} />}
+      {tab === "mentorship" && <Mentorship user={user} userName={userName} alumni={alumni} />}
+      {tab === "certs" && <CertTracker user={user} userName={userName} isAdmin={false} allAlumni={alumni} />}
     </AppLayout>
   );
 }
@@ -601,6 +974,9 @@ function AdminDashboard({ user }) {
     { id: "stories", label: "Stories", icon: "★" },
     { id: "resources", label: "Resources", icon: "📚" },
     { id: "aotm", label: "Alumni of Month", icon: "🏆" },
+    { id: "jobs", label: "Jobs", icon: "💼" },
+    { id: "mentorship", label: "Mentorship", icon: "🎯" },
+    { id: "certs", label: "Cert Tracker", icon: "📜" },
   ];
 
   if (loading) return <Loading />;
@@ -661,6 +1037,9 @@ function AdminDashboard({ user }) {
       {tab === "stories" && <Stories alumni={alumni} />}
       {tab === "resources" && <ResourceLibrary user={user} isAdmin={true} />}
       {tab === "aotm" && <div style={{ display: "flex", flexDirection: "column", gap: 20 }}><div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>🏆 Alumni of the Month</div><AlumniOfTheMonth alumni={alumni} isAdmin={true} /></div>}
+      {tab === "jobs" && <JobBoard user={user} isAdmin={true} />}
+      {tab === "mentorship" && <Mentorship user={user} userName="Admin" alumni={alumni} />}
+      {tab === "certs" && <CertTracker user={user} userName="Admin" isAdmin={true} allAlumni={alumni} />}
     </AppLayout>
   );
 }
