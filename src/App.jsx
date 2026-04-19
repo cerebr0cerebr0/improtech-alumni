@@ -1756,8 +1756,6 @@ function AlumniDashboard({ user, userName }) {
     { id: "certs", label: "My Certs", icon: "📜" },
     { id: "events", label: "Events", icon: "📅" },
     { id: "groups", label: "Study Groups", icon: "👥" },
-    { id: "feed", label: "Feed", icon: "📸" },
-    { id: "moderation", label: "Moderation", icon: "🛡️" },
   ];
 
   if (loading) return <Loading />;
@@ -1771,6 +1769,7 @@ function AlumniDashboard({ user, userName }) {
             <div style={{ color: B.gray, fontSize: 14 }}>Connect with {alumni.length} IMPROTECH alumni worldwide</div>
           </div>
           <AlumniOfTheMonth alumni={alumni} isAdmin={false} />
+          <SocialFeed user={user} userName={userName} isAdmin={false} />
           <AlumniMap alumni={alumni} />
           <div>
             <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>🕐 Recently joined</div>
@@ -1790,7 +1789,6 @@ function AlumniDashboard({ user, userName }) {
       {tab === "certs" && <CertTracker user={user} userName={userName} isAdmin={false} allAlumni={alumni} />}
       {tab === "events" && <Events user={user} isAdmin={false} />}
       {tab === "groups" && <StudyGroups user={user} userName={userName} />}
-      {tab === "feed" && <SocialFeed user={user} userName={userName} isAdmin={false} />}
     </AppLayout>
   );
 }
@@ -1841,8 +1839,6 @@ function AdminDashboard({ user }) {
     { id: "certs", label: "Cert Tracker", icon: "📜" },
     { id: "events", label: "Events", icon: "📅" },
     { id: "groups", label: "Study Groups", icon: "👥" },
-    { id: "feed", label: "Feed", icon: "📸" },
-    { id: "moderation", label: "Moderation", icon: "🛡️" },
   ];
 
   if (loading) return <Loading />;
@@ -1878,6 +1874,7 @@ function AdminDashboard({ user }) {
               </div>
             ))}
           </div>
+          <SocialFeed user={user} userName="Admin" isAdmin={true} />
           <AlumniMap alumni={alumni} />
           {byCert.length > 0 && <div style={{ background: B.purpleMid, borderRadius: 18, padding: 24, border: `1px solid ${B.purpleLight}33` }}>
             <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>📜 Certifications</div>
@@ -1908,8 +1905,6 @@ function AdminDashboard({ user }) {
       {tab === "certs" && <CertTracker user={user} userName="Admin" isAdmin={true} allAlumni={alumni} />}
       {tab === "events" && <Events user={user} isAdmin={true} />}
       {tab === "groups" && <StudyGroups user={user} userName="Admin" />}
-      {tab === "feed" && <SocialFeed user={user} userName="Admin" isAdmin={true} />}
-      {tab === "moderation" && <ModerationCenter user={user} />}
     </AppLayout>
   );
 }
