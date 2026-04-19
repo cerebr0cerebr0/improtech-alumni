@@ -847,6 +847,297 @@ function CertTracker({ user, userName, isAdmin, allAlumni }) {
   );
 }
 
+
+// ─── EVENTS & WEBINARS ───────────────────────────────────────────────────
+function Events({ user, isAdmin }) {
+  const [events, setEvents] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [filter, setFilter] = useState("upcoming");
+  const [toast, showToast] = useToast();
+  const empty = { title: "", description: "", type: "", date: "", time: "", link: "", location: "", seats: "" };
+  const [form, setForm] = useState(empty);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const TYPES = ["Webinar", "Networking", "Certification Prep", "Workshop", "Conference", "Social"];
+  const typeColors = { "Webinar": B.teal, "Networking": B.gold, "Certification Prep": B.green, "Workshop": B.purpleLight, "Conference": "#9C27B0", "Social": B.red };
+  const typeIcons = { "Webinar": "🖥️", "Networking": "🤝", "Certification Prep": "📜", "Workshop": "🛠️", "Conference": "🎤", "Social": "🎉" };
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "events"), snap => {
+      setEvents(snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => new Date(a.date) - new Date(b.date)));
+    });
+    return unsub;
+  }, []);
+
+  const createEvent = async () => {
+    if (!form.title || !form.date) return;
+    await addDoc(collection(db, "events"), { ...form, createdBy: user.email, attendees: [], createdAt: serverTimestamp() });
+    setForm(empty); setShowAdd(false);
+    showToast("Event created! 🎉");
+  };
+
+  const toggleAttend = async (ev) => {
+    const attending = (ev.attendees || []).includes(user.email);
+    const updated = attending ? ev.attendees.filter(e => e !== user.email) : [...(ev.attendees || []), user.email];
+    await setDoc(doc(db, "events", ev.id), { ...ev, attendees: updated });
+    showToast(attending ? "Registration cancelled." : "You're registered! 🎉");
+  };
+
+  const deleteEvent = async (id) => { if (window.confirm("Delete event?")) { await deleteDoc(doc(db, "events", id)); showToast("Event deleted.", "error"); } };
+
+  const now = new Date();
+  const upcoming = events.filter(e => new Date(e.date) >= now);
+  const past = events.filter(e => new Date(e.date) < now);
+  const displayed = filter === "upcoming" ? upcoming : past;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <Toast toast={toast} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>📅 Events & Webinars</div>
+          <div style={{ color: B.gray, fontSize: 14, marginTop: 4 }}>{upcoming.length} upcoming · {past.length} past</div>
+        </div>
+        {isAdmin && <button onClick={() => setShowAdd(!showAdd)} style={{ padding: "10px 20px", borderRadius: 10, background: `linear-gradient(135deg, ${B.gold}, ${B.goldLight})`, color: B.purple, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>{showAdd ? "✕ Cancel" : "+ Create Event"}</button>}
+      </div>
+
+      {/* Create Event Form */}
+      {showAdd && isAdmin && (
+        <div style={{ background: B.purpleMid, borderRadius: 16, padding: 24, border: `1px solid ${B.gold}33` }}>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Create a New Event</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ gridColumn: "1/-1" }}><label style={lStyle}>Title *</label><input style={iStyle} value={form.title} onChange={e => set("title", e.target.value)} placeholder="e.g. CCIE Study Session - Enterprise" /></div>
+            <div><label style={lStyle}>Type</label><select style={iStyle} value={form.type} onChange={e => set("type", e.target.value)}><option value="">-- Select --</option>{TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
+            <div><label style={lStyle}>Date *</label><input style={iStyle} type="date" value={form.date} onChange={e => set("date", e.target.value)} /></div>
+            <div><label style={lStyle}>Time</label><input style={iStyle} type="time" value={form.time} onChange={e => set("time", e.target.value)} /></div>
+            <div><label style={lStyle}>Max Seats</label><input style={iStyle} type="number" value={form.seats} onChange={e => set("seats", e.target.value)} placeholder="e.g. 50" /></div>
+            <div style={{ gridColumn: "1/-1" }}><label style={lStyle}>Location / Platform</label><input style={iStyle} value={form.location} onChange={e => set("location", e.target.value)} placeholder="e.g. Zoom, Accra Office, Google Meet" /></div>
+            <div style={{ gridColumn: "1/-1" }}><label style={lStyle}>Registration / Join Link</label><input style={iStyle} value={form.link} onChange={e => set("link", e.target.value)} placeholder="https://..." /></div>
+            <div style={{ gridColumn: "1/-1" }}><label style={lStyle}>Description</label><textarea style={{ ...iStyle, resize: "vertical", minHeight: 80 }} value={form.description} onChange={e => set("description", e.target.value)} placeholder="What will participants learn or experience?" /></div>
+          </div>
+          <button onClick={createEvent} disabled={!form.title || !form.date} style={{ marginTop: 14, padding: "11px 24px", borderRadius: 10, background: form.title && form.date ? `linear-gradient(135deg, ${B.gold}, ${B.goldLight})` : B.darkGray, color: form.title && form.date ? B.purple : B.gray, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>✓ Create Event</button>
+        </div>
+      )}
+
+      {/* Filter tabs */}
+      <div style={{ display: "flex", gap: 8 }}>
+        {["upcoming", "past"].map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{ padding: "8px 20px", borderRadius: 20, background: filter === f ? B.gold : `${B.purpleLight}33`, color: filter === f ? B.purple : B.gray, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, textTransform: "capitalize" }}>{f === "upcoming" ? `Upcoming (${upcoming.length})` : `Past (${past.length})`}</button>
+        ))}
+      </div>
+
+      {/* Event cards */}
+      {displayed.length === 0 && (
+        <div style={{ textAlign: "center", padding: 60, color: B.gray }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📅</div>
+          <div>{filter === "upcoming" ? "No upcoming events. Check back soon!" : "No past events."}</div>
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {displayed.map(ev => {
+          const tc = typeColors[ev.type] || B.purpleLight;
+          const icon = typeIcons[ev.type] || "📅";
+          const attending = (ev.attendees || []).includes(user.email);
+          const spotsLeft = ev.seats ? Number(ev.seats) - (ev.attendees || []).length : null;
+          const isPast = new Date(ev.date) < now;
+          return (
+            <div key={ev.id} style={{ background: B.purpleMid, borderRadius: 18, padding: 24, border: `1px solid ${B.purpleLight}33`, borderLeft: `5px solid ${tc}` }}>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                {/* Date block */}
+                <div style={{ background: `${tc}22`, border: `1px solid ${tc}44`, borderRadius: 12, padding: "12px 16px", textAlign: "center", minWidth: 70, flexShrink: 0 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: tc, fontFamily: "'Sora', sans-serif" }}>{new Date(ev.date).getDate()}</div>
+                  <div style={{ fontSize: 11, color: B.gray, textTransform: "uppercase", letterSpacing: 1 }}>{new Date(ev.date).toLocaleString("en", { month: "short" })}</div>
+                  <div style={{ fontSize: 11, color: B.gray }}>{new Date(ev.date).getFullYear()}</div>
+                </div>
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 8 }}>
+                    <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 18, color: B.white, flex: 1 }}>{icon} {ev.title}</div>
+                    {isAdmin && <button onClick={() => deleteEvent(ev.id)} style={{ background: "none", border: "none", color: B.gray, cursor: "pointer", fontSize: 14, flexShrink: 0 }}>🗑</button>}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                    {ev.type && <span style={{ background: `${tc}22`, color: tc, border: `1px solid ${tc}44`, borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{ev.type}</span>}
+                    {ev.time && <span style={{ color: B.gray, fontSize: 12 }}>🕐 {ev.time}</span>}
+                    {ev.location && <span style={{ color: B.gray, fontSize: 12 }}>📍 {ev.location}</span>}
+                    {spotsLeft !== null && <span style={{ color: spotsLeft <= 5 ? B.red : B.green, fontSize: 12, fontWeight: 600 }}>{spotsLeft > 0 ? `${spotsLeft} spots left` : "Full"}</span>}
+                  </div>
+                  {ev.description && <div style={{ fontSize: 13, color: B.offWhite, lineHeight: 1.6, marginBottom: 14 }}>{ev.description}</div>}
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ fontSize: 12, color: B.gray }}>👥 {(ev.attendees || []).length} registered</div>
+                    {!isPast && (
+                      <button onClick={() => toggleAttend(ev)} disabled={!attending && spotsLeft === 0} style={{ padding: "8px 18px", borderRadius: 9, background: attending ? `${B.red}22` : `linear-gradient(135deg, ${tc}, ${tc}bb)`, color: attending ? B.red : "#fff", border: attending ? `1px solid ${B.red}44` : "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                        {attending ? "✕ Cancel Registration" : "✓ Register"}
+                      </button>
+                    )}
+                    {ev.link && <a href={ev.link} target="_blank" rel="noreferrer" style={{ padding: "8px 18px", borderRadius: 9, background: `${B.purpleLight}33`, color: B.offWhite, textDecoration: "none", fontSize: 12, fontWeight: 700 }}>Join Link →</a>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── STUDY GROUPS ─────────────────────────────────────────────────────────
+function StudyGroups({ user, userName }) {
+  const [groups, setGroups] = useState([]);
+  const [activeGroup, setActiveGroup] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ name: "", cert: "", description: "", level: "" });
+  const [toast, showToast] = useToast();
+  const bottomRef = useRef(null);
+  const LEVELS = ["Beginner", "Intermediate", "Advanced", "All Levels"];
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "studyGroups"), snap => {
+      setGroups(snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (b.members || []).length - (a.members || []).length));
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!activeGroup) return;
+    const unsub = onSnapshot(collection(db, `studyGroups/${activeGroup.id}/messages`), snap => {
+      const msgs = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+      setMessages(msgs);
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    });
+    return unsub;
+  }, [activeGroup]);
+
+  const createGroup = async () => {
+    if (!form.name || !form.cert) return;
+    const ref = await addDoc(collection(db, "studyGroups"), { ...form, createdBy: user.email, createdByName: userName, members: [user.email], createdAt: serverTimestamp() });
+    setForm({ name: "", cert: "", description: "", level: "" });
+    setShowCreate(false);
+    const newGroup = { ...form, id: ref.id, members: [user.email], createdBy: user.email };
+    setActiveGroup(newGroup);
+    showToast("Study group created! 📚");
+  };
+
+  const toggleMember = async (group) => {
+    const isMember = (group.members || []).includes(user.email);
+    const updated = isMember ? group.members.filter(e => e !== user.email) : [...(group.members || []), user.email];
+    await setDoc(doc(db, "studyGroups", group.id), { ...group, members: updated });
+    if (activeGroup?.id === group.id) setActiveGroup({ ...group, members: updated });
+    showToast(isMember ? "Left the group." : "Joined the group! 🎓");
+  };
+
+  const sendMessage = async () => {
+    if (!text.trim() || !activeGroup) return;
+    const t = text.trim(); setText("");
+    await addDoc(collection(db, `studyGroups/${activeGroup.id}/messages`), { text: t, senderName: userName, senderUid: user.uid, senderEmail: user.email, createdAt: serverTimestamp() });
+  };
+
+  const deleteGroup = async (id) => { if (window.confirm("Delete this group?")) { await deleteDoc(doc(db, "studyGroups", id)); setActiveGroup(null); showToast("Group deleted.", "error"); } };
+
+  const fmt = ts => { if (!ts?.toMillis) return ""; return new Date(ts.toMillis()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); };
+  const certColor = cert => CARD_COLORS[CERTS.indexOf(cert) % CARD_COLORS.length] || B.teal;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <Toast toast={toast} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>👥 Study Groups</div>
+          <div style={{ color: B.gray, fontSize: 14, marginTop: 4 }}>Study together by certification track</div>
+        </div>
+        <button onClick={() => setShowCreate(!showCreate)} style={{ padding: "10px 20px", borderRadius: 10, background: `linear-gradient(135deg, ${B.teal}, ${B.tealDark})`, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>{showCreate ? "✕ Cancel" : "+ Create Group"}</button>
+      </div>
+
+      {showCreate && (
+        <div style={{ background: B.purpleMid, borderRadius: 16, padding: 24, border: `1px solid ${B.teal}33` }}>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Create a Study Group</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ gridColumn: "1/-1" }}><label style={lStyle}>Group Name *</label><input style={iStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. CCIE Enterprise Study Group 2025" /></div>
+            <div><label style={lStyle}>Certification *</label><select style={iStyle} value={form.cert} onChange={e => setForm(f => ({ ...f, cert: e.target.value }))}><option value="">-- Select --</option>{CERTS.map(c => <option key={c}>{c}</option>)}</select></div>
+            <div><label style={lStyle}>Level</label><select style={iStyle} value={form.level} onChange={e => setForm(f => ({ ...f, level: e.target.value }))}><option value="">-- Select --</option>{LEVELS.map(l => <option key={l}>{l}</option>)}</select></div>
+            <div style={{ gridColumn: "1/-1" }}><label style={lStyle}>Description</label><textarea style={{ ...iStyle, resize: "vertical", minHeight: 70 }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What's the focus? Study schedule? Goals?" /></div>
+          </div>
+          <button onClick={createGroup} disabled={!form.name || !form.cert} style={{ marginTop: 14, padding: "11px 24px", borderRadius: 10, background: form.name && form.cert ? `linear-gradient(135deg, ${B.teal}, ${B.tealDark})` : B.darkGray, color: form.name && form.cert ? "#fff" : B.gray, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>✓ Create Group</button>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: activeGroup ? "300px 1fr" : "1fr", gap: 16 }}>
+        {/* Group list */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {groups.length === 0 && !showCreate && (
+            <div style={{ textAlign: "center", padding: 60, color: B.gray }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
+              <div>No study groups yet. Create the first one!</div>
+            </div>
+          )}
+          {groups.map(g => {
+            const isMember = (g.members || []).includes(user.email);
+            const isCreator = g.createdBy === user.email;
+            const col = certColor(g.cert);
+            const isActive = activeGroup?.id === g.id;
+            return (
+              <div key={g.id} onClick={() => isMember && setActiveGroup(g)} style={{ background: isActive ? `${col}22` : B.purpleMid, borderRadius: 14, padding: 18, border: `1px solid ${isActive ? col : B.purpleLight}44`, cursor: isMember ? "pointer" : "default", transition: "all 0.2s" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, color: B.white, fontSize: 14, marginBottom: 4, fontFamily: "'Sora', sans-serif" }}>{g.name}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ background: `${col}22`, color: col, border: `1px solid ${col}44`, borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{g.cert}</span>
+                      {g.level && <span style={{ background: `${B.gray}22`, color: B.gray, borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{g.level}</span>}
+                    </div>
+                  </div>
+                  {isCreator && <button onClick={e => { e.stopPropagation(); deleteGroup(g.id); }} style={{ background: "none", border: "none", color: B.gray, cursor: "pointer", fontSize: 12, padding: 0 }}>🗑</button>}
+                </div>
+                {g.description && <div style={{ fontSize: 12, color: B.gray, marginBottom: 10, lineHeight: 1.5 }}>{g.description.slice(0, 80)}{g.description.length > 80 ? "..." : ""}</div>}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 11, color: B.gray }}>👥 {(g.members || []).length} members</div>
+                  <button onClick={e => { e.stopPropagation(); toggleMember(g); }} style={{ padding: "5px 12px", borderRadius: 8, background: isMember ? `${B.red}22` : `linear-gradient(135deg, ${col}, ${col}bb)`, color: isMember ? B.red : "#fff", border: isMember ? `1px solid ${B.red}33` : "none", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
+                    {isMember ? "Leave" : "Join →"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Group Chat */}
+        {activeGroup && (
+          <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 250px)", minHeight: 400, background: B.purpleMid, borderRadius: 16, border: `1px solid ${B.purpleLight}33`, overflow: "hidden" }}>
+            <div style={{ padding: "14px 18px", borderBottom: `1px solid ${B.purpleLight}33`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 14, color: B.white }}>{activeGroup.name}</div>
+                <div style={{ fontSize: 11, color: B.gray, marginTop: 2 }}>👥 {(activeGroup.members || []).length} members · {activeGroup.cert}</div>
+              </div>
+              <button onClick={() => setActiveGroup(null)} style={{ background: "none", border: "none", color: B.gray, cursor: "pointer", fontSize: 18 }}>✕</button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {messages.length === 0 && <div style={{ textAlign: "center", padding: 40, color: B.gray, fontSize: 13 }}>No messages yet. Start the conversation! 👋</div>}
+              {messages.map(m => {
+                const isMe = m.senderUid === user.uid;
+                return (
+                  <div key={m.id} style={{ display: "flex", flexDirection: isMe ? "row-reverse" : "row", gap: 8, alignItems: "flex-end" }}>
+                    {!isMe && <Avatar name={m.senderName} size={28} />}
+                    <div style={{ maxWidth: "70%" }}>
+                      {!isMe && <div style={{ fontSize: 10, color: B.gray, marginBottom: 3, marginLeft: 4 }}>{m.senderName}</div>}
+                      <div style={{ background: isMe ? `linear-gradient(135deg, ${B.purpleLight}, ${B.purple})` : `${B.purple}88`, borderRadius: isMe ? "14px 14px 4px 14px" : "14px 14px 14px 4px", padding: "9px 13px", fontSize: 13, color: B.white, border: `1px solid ${B.purpleLight}33` }}>{m.text}</div>
+                      <div style={{ fontSize: 10, color: B.gray, marginTop: 2, textAlign: isMe ? "right" : "left" }}>{fmt(m.createdAt)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={bottomRef} />
+            </div>
+            <div style={{ padding: "10px 14px", borderTop: `1px solid ${B.purpleLight}33`, display: "flex", gap: 8 }}>
+              <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()} placeholder="Message the group..." style={{ ...iStyle, margin: 0, fontSize: 13 }} />
+              <button onClick={sendMessage} disabled={!text.trim()} style={{ padding: "9px 18px", borderRadius: 9, background: text.trim() ? `linear-gradient(135deg, ${B.teal}, ${B.tealDark})` : B.darkGray, color: text.trim() ? "#fff" : B.gray, fontWeight: 700, border: "none", cursor: text.trim() ? "pointer" : "default", flexShrink: 0, fontSize: 13 }}>Send</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── LAYOUT ───────────────────────────────────────────────────────────────
 function AppLayout({ user, userName, isAdmin, tabs, activeTab, setTab, children, rightActions }) {
   return (
@@ -899,6 +1190,8 @@ function AlumniDashboard({ user, userName }) {
     { id: "jobs", label: "Jobs", icon: "💼" },
     { id: "mentorship", label: "Mentorship", icon: "🎯" },
     { id: "certs", label: "My Certs", icon: "📜" },
+    { id: "events", label: "Events", icon: "📅" },
+    { id: "groups", label: "Study Groups", icon: "👥" },
   ];
 
   if (loading) return <Loading />;
@@ -929,6 +1222,8 @@ function AlumniDashboard({ user, userName }) {
       {tab === "jobs" && <JobBoard user={user} isAdmin={false} />}
       {tab === "mentorship" && <Mentorship user={user} userName={userName} alumni={alumni} />}
       {tab === "certs" && <CertTracker user={user} userName={userName} isAdmin={false} allAlumni={alumni} />}
+      {tab === "events" && <Events user={user} isAdmin={false} />}
+      {tab === "groups" && <StudyGroups user={user} userName={userName} />}
     </AppLayout>
   );
 }
@@ -977,6 +1272,8 @@ function AdminDashboard({ user }) {
     { id: "jobs", label: "Jobs", icon: "💼" },
     { id: "mentorship", label: "Mentorship", icon: "🎯" },
     { id: "certs", label: "Cert Tracker", icon: "📜" },
+    { id: "events", label: "Events", icon: "📅" },
+    { id: "groups", label: "Study Groups", icon: "👥" },
   ];
 
   if (loading) return <Loading />;
@@ -1040,6 +1337,8 @@ function AdminDashboard({ user }) {
       {tab === "jobs" && <JobBoard user={user} isAdmin={true} />}
       {tab === "mentorship" && <Mentorship user={user} userName="Admin" alumni={alumni} />}
       {tab === "certs" && <CertTracker user={user} userName="Admin" isAdmin={true} allAlumni={alumni} />}
+      {tab === "events" && <Events user={user} isAdmin={true} />}
+      {tab === "groups" && <StudyGroups user={user} userName="Admin" />}
     </AppLayout>
   );
 }
