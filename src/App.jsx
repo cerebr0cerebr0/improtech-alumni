@@ -1179,6 +1179,10 @@ function ModerationCenter({ user }) {
       onSnapshot(collection(db, "mentors"), snap => setMentors(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(collection(db, "mentorRequests"), snap => setRequests(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(collection(db, "alumni"), snap => setAlumni(snap.docs.map(d => ({ ...d.data(), firestoreId: d.id })))),
+      onSnapshot(collection(db, "feed"), snap => {
+        const feedPosts = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        // Add feed posts count to resources for display
+      }),
       onSnapshot(collection(db, "bannedUsers"), snap => setBannedUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
     ];
     return () => unsubs.forEach(u => u && u());
@@ -1439,6 +1443,265 @@ function ModerationCenter({ user }) {
   );
 }
 
+
+// ─── SOCIAL FEED ─────────────────────────────────────────────────────────
+function SocialFeed({ user, userName, isAdmin }) {
+  const [posts, setPosts] = useState([]);
+  const [text, setText] = useState("");
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [posting, setPosting] = useState(false);
+  const [openComments, setOpenComments] = useState({});
+  const [commentText, setCommentText] = useState({});
+  const [toast, showToast] = useToast();
+  const fileRef = useRef(null);
+
+  const REACTIONS = ["❤️","👍","🔥","🎉","👏","💪"];
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "feed"), snap => {
+      const data = snap.docs.map(d => ({ ...d.data(), id: d.id }))
+        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setPosts(data);
+    });
+    return unsub;
+  }, []);
+
+  // Compress image using canvas
+  const compressImage = (file) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast("Image too large. Max 5MB.", "error"); return; }
+    const compressed = await compressImage(file);
+    setImage(compressed);
+    setImagePreview(compressed);
+  };
+
+  const post = async () => {
+    if (!text.trim() && !image) return;
+    setPosting(true);
+    try {
+      await addDoc(collection(db, "feed"), {
+        text: text.trim(),
+        image: image || null,
+        authorName: userName,
+        authorEmail: user.email,
+        authorUid: user.uid,
+        reactions: {},
+        comments: [],
+        createdAt: serverTimestamp(),
+      });
+      setText(""); setImage(null); setImagePreview(null);
+      showToast("Post shared! 🎉");
+    } catch(e) { showToast("Error posting. Try a smaller image.", "error"); }
+    setPosting(false);
+  };
+
+  const toggleReaction = async (postId, emoji) => {
+    const postRef = doc(db, "feed", postId);
+    const p = posts.find(p => p.id === postId);
+    if (!p) return;
+    const reactions = { ...(p.reactions || {}) };
+    const users = reactions[emoji] || [];
+    reactions[emoji] = users.includes(user.uid)
+      ? users.filter(u => u !== user.uid)
+      : [...users, user.uid];
+    await setDoc(postRef, { ...p, reactions }, { merge: true });
+  };
+
+  const addComment = async (postId) => {
+    const txt = commentText[postId]?.trim();
+    if (!txt) return;
+    const postRef = doc(db, "feed", postId);
+    const p = posts.find(p => p.id === postId);
+    const newComment = { text: txt, authorName: userName, authorEmail: user.email, uid: user.uid, createdAt: new Date().toISOString() };
+    await setDoc(postRef, { ...p, comments: [...(p.comments || []), newComment] }, { merge: true });
+    setCommentText(c => ({ ...c, [postId]: "" }));
+  };
+
+  const deletePost = async (id) => {
+    if (window.confirm("Delete this post?")) { await deleteDoc(doc(db, "feed", id)); showToast("Post deleted.", "error"); }
+  };
+
+  const deleteComment = async (post, idx) => {
+    const updated = post.comments.filter((_, i) => i !== idx);
+    await setDoc(doc(db, "feed", post.id), { ...post, comments: updated }, { merge: true });
+  };
+
+  const fmt = ts => {
+    if (!ts) return "";
+    const d = ts.toMillis ? new Date(ts.toMillis()) : new Date(ts);
+    const diff = Date.now() - d.getTime();
+    if (diff < 60000) return "Just now";
+    if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+    return d.toLocaleDateString();
+  };
+
+  const totalReactions = (p) => Object.values(p.reactions || {}).reduce((a, b) => a + b.length, 0);
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:20, maxWidth:680, margin:"0 auto" }}>
+      <Toast toast={toast} />
+      <div>
+        <div style={{ fontFamily:"'Sora', sans-serif", fontSize:22, fontWeight:800, marginBottom:4 }}>📸 Alumni Feed</div>
+        <div style={{ color:B.gray, fontSize:14 }}>Share moments, achievements & updates with the community</div>
+      </div>
+
+      {/* Composer */}
+      <div style={{ background:B.purpleMid, borderRadius:18, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+        <div style={{ display:"flex", gap:12, marginBottom:14 }}>
+          <Avatar name={userName} size={44} />
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder={`What's on your mind, ${userName.split(" ")[0]}?`}
+            style={{ ...iStyle, resize:"none", minHeight:80, flex:1, margin:0, borderRadius:14, fontSize:15 }}
+          />
+        </div>
+
+        {imagePreview && (
+          <div style={{ position:"relative", marginBottom:14 }}>
+            <img src={imagePreview} alt="preview" style={{ width:"100%", maxHeight:400, objectFit:"cover", borderRadius:12 }} />
+            <button onClick={() => { setImage(null); setImagePreview(null); }} style={{ position:"absolute", top:10, right:10, background:"#000a", color:"#fff", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+          </div>
+        )}
+
+        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleFile} />
+          <button onClick={() => fileRef.current?.click()} style={{ padding:"9px 16px", borderRadius:10, background:`${B.teal}22`, color:B.teal, border:`1px solid ${B.teal}44`, cursor:"pointer", fontSize:13, fontWeight:700 }}>📷 Photo</button>
+          <div style={{ flex:1 }} />
+          <button onClick={post} disabled={posting || (!text.trim() && !image)} style={{ padding:"9px 22px", borderRadius:10, background:text.trim()||image ? `linear-gradient(135deg, ${B.gold}, ${B.goldLight})` : B.darkGray, color:text.trim()||image ? B.purple : B.gray, border:"none", fontWeight:800, fontSize:14, cursor:text.trim()||image?"pointer":"default" }}>
+            {posting ? "Sharing..." : "Share →"}
+          </button>
+        </div>
+      </div>
+
+      {/* Posts */}
+      {posts.length === 0 && (
+        <div style={{ textAlign:"center", padding:60, color:B.gray }}>
+          <div style={{ fontSize:48, marginBottom:12 }}>📸</div>
+          <div>No posts yet. Be the first to share something!</div>
+        </div>
+      )}
+
+      {posts.map(p => {
+        const myReactions = Object.entries(p.reactions || {}).filter(([, users]) => users.includes(user.uid)).map(([e]) => e);
+        const showComments = openComments[p.id];
+        const canDelete = isAdmin || p.authorUid === user.uid;
+
+        return (
+          <div key={p.id} style={{ background:B.purpleMid, borderRadius:18, border:`1px solid ${B.purpleLight}33`, overflow:"hidden" }}>
+            {/* Post header */}
+            <div style={{ display:"flex", gap:12, alignItems:"center", padding:"16px 20px 12px" }}>
+              <Avatar name={p.authorName} size={44} />
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, color:B.white, fontSize:15, fontFamily:"'Sora', sans-serif" }}>{p.authorName}</div>
+                <div style={{ fontSize:12, color:B.gray, marginTop:2 }}>{fmt(p.createdAt)}</div>
+              </div>
+              {canDelete && (
+                <button onClick={() => deletePost(p.id)} style={{ background:"none", border:"none", color:B.gray, cursor:"pointer", fontSize:18, padding:4 }}>🗑</button>
+              )}
+            </div>
+
+            {/* Post text */}
+            {p.text && <div style={{ padding:"0 20px 14px", fontSize:15, color:B.offWhite, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{p.text}</div>}
+
+            {/* Post image */}
+            {p.image && (
+              <img src={p.image} alt="post" style={{ width:"100%", maxHeight:500, objectFit:"cover", display:"block" }} />
+            )}
+
+            {/* Reaction summary */}
+            {totalReactions(p) > 0 && (
+              <div style={{ padding:"10px 20px 0", display:"flex", gap:6, flexWrap:"wrap" }}>
+                {Object.entries(p.reactions || {}).filter(([, users]) => users.length > 0).map(([emoji, users]) => (
+                  <div key={emoji} style={{ background:`${B.purple}88`, borderRadius:20, padding:"3px 10px", fontSize:13, color:B.offWhite, display:"flex", alignItems:"center", gap:4 }}>
+                    {emoji} <span style={{ fontSize:11, color:B.gray }}>{users.length}</span>
+                  </div>
+                ))}
+                <div style={{ fontSize:12, color:B.gray, display:"flex", alignItems:"center", marginLeft:4 }}>{totalReactions(p)} reaction{totalReactions(p)>1?"s":""}</div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div style={{ padding:"10px 20px", display:"flex", gap:8, borderTop:`1px solid ${B.purpleLight}22`, marginTop:10, flexWrap:"wrap" }}>
+              {REACTIONS.map(emoji => {
+                const count = (p.reactions?.[emoji] || []).length;
+                const active = myReactions.includes(emoji);
+                return (
+                  <button key={emoji} onClick={() => toggleReaction(p.id, emoji)} style={{ padding:"6px 12px", borderRadius:20, background:active?`${B.gold}33`:`${B.purple}66`, border:active?`1px solid ${B.gold}55`:`1px solid ${B.purpleLight}33`, cursor:"pointer", fontSize:14, display:"flex", alignItems:"center", gap:4, transition:"all 0.15s" }}>
+                    {emoji} {count > 0 && <span style={{ fontSize:11, color:active?B.gold:B.gray }}>{count}</span>}
+                  </button>
+                );
+              })}
+              <button onClick={() => setOpenComments(c => ({ ...c, [p.id]: !c[p.id] }))} style={{ marginLeft:"auto", padding:"6px 14px", borderRadius:20, background:`${B.purpleLight}33`, border:`1px solid ${B.purpleLight}44`, color:B.gray, cursor:"pointer", fontSize:12, fontWeight:700 }}>
+                💬 {(p.comments||[]).length} comment{(p.comments||[]).length!==1?"s":""}
+              </button>
+            </div>
+
+            {/* Comments section */}
+            {showComments && (
+              <div style={{ padding:"0 20px 16px", borderTop:`1px solid ${B.purpleLight}22` }}>
+                {/* Existing comments */}
+                {(p.comments || []).map((c, i) => (
+                  <div key={i} style={{ display:"flex", gap:10, marginTop:12, alignItems:"flex-start" }}>
+                    <Avatar name={c.authorName} size={32} />
+                    <div style={{ flex:1, background:`${B.purple}88`, borderRadius:"4px 14px 14px 14px", padding:"8px 12px" }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                        <div style={{ fontWeight:700, fontSize:12, color:B.gold, marginBottom:4 }}>{c.authorName}</div>
+                        {(isAdmin || c.uid === user.uid) && (
+                          <button onClick={() => deleteComment(p, i)} style={{ background:"none", border:"none", color:B.gray, cursor:"pointer", fontSize:12, padding:0, marginLeft:8 }}>✕</button>
+                        )}
+                      </div>
+                      <div style={{ fontSize:13, color:B.offWhite, lineHeight:1.5 }}>{c.text}</div>
+                    </div>
+                  </div>
+                ))}
+                {/* Add comment */}
+                <div style={{ display:"flex", gap:10, marginTop:14 }}>
+                  <Avatar name={userName} size={32} />
+                  <div style={{ flex:1, display:"flex", gap:8 }}>
+                    <input
+                      value={commentText[p.id] || ""}
+                      onChange={e => setCommentText(c => ({ ...c, [p.id]: e.target.value }))}
+                      onKeyDown={e => e.key === "Enter" && addComment(p.id)}
+                      placeholder="Write a comment..."
+                      style={{ ...iStyle, margin:0, fontSize:13, borderRadius:20, padding:"8px 14px", flex:1 }}
+                    />
+                    <button onClick={() => addComment(p.id)} disabled={!commentText[p.id]?.trim()} style={{ padding:"8px 16px", borderRadius:20, background:commentText[p.id]?.trim()?`linear-gradient(135deg,${B.teal},${B.tealDark})`:B.darkGray, color:commentText[p.id]?.trim()?"#fff":B.gray, border:"none", cursor:"pointer", fontWeight:700, fontSize:12 }}>Post</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── LAYOUT ───────────────────────────────────────────────────────────────
 function AppLayout({ user, userName, isAdmin, tabs, activeTab, setTab, children, rightActions }) {
   return (
@@ -1493,6 +1756,7 @@ function AlumniDashboard({ user, userName }) {
     { id: "certs", label: "My Certs", icon: "📜" },
     { id: "events", label: "Events", icon: "📅" },
     { id: "groups", label: "Study Groups", icon: "👥" },
+    { id: "feed", label: "Feed", icon: "📸" },
     { id: "moderation", label: "Moderation", icon: "🛡️" },
   ];
 
@@ -1526,6 +1790,7 @@ function AlumniDashboard({ user, userName }) {
       {tab === "certs" && <CertTracker user={user} userName={userName} isAdmin={false} allAlumni={alumni} />}
       {tab === "events" && <Events user={user} isAdmin={false} />}
       {tab === "groups" && <StudyGroups user={user} userName={userName} />}
+      {tab === "feed" && <SocialFeed user={user} userName={userName} isAdmin={false} />}
     </AppLayout>
   );
 }
@@ -1576,6 +1841,7 @@ function AdminDashboard({ user }) {
     { id: "certs", label: "Cert Tracker", icon: "📜" },
     { id: "events", label: "Events", icon: "📅" },
     { id: "groups", label: "Study Groups", icon: "👥" },
+    { id: "feed", label: "Feed", icon: "📸" },
     { id: "moderation", label: "Moderation", icon: "🛡️" },
   ];
 
@@ -1642,6 +1908,7 @@ function AdminDashboard({ user }) {
       {tab === "certs" && <CertTracker user={user} userName="Admin" isAdmin={true} allAlumni={alumni} />}
       {tab === "events" && <Events user={user} isAdmin={true} />}
       {tab === "groups" && <StudyGroups user={user} userName="Admin" />}
+      {tab === "feed" && <SocialFeed user={user} userName="Admin" isAdmin={true} />}
       {tab === "moderation" && <ModerationCenter user={user} />}
     </AppLayout>
   );
