@@ -45,16 +45,12 @@ function useToast() {
   return [toast, show];
 }
 function Loading() {
-  return <div style={{ minHeight: "100vh", background: B.purple, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ textAlign: "center", color: B.gray }}><div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div><div>Chargement...</div></div></div>;
+  return <div style={{ minHeight: "100vh", background: B.purple, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ textAlign: "center", color: B.gray }}><div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div><div>Loading...</div></div></div>;
 }
 
 // ─── LOGO / HEADER HELPERS ────────────────────────────────────────────────
 function LogoIcon({ size = 40 }) {
-  return (
-    <div style={{ width: size, height: size, borderRadius: size * 0.18, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: size * 0.06 }}>
-      <img src={`${import.meta.env.BASE_URL}logo.png`} alt="IMPROTECH" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-    </div>
-  );
+  return <img src={`${import.meta.env.BASE_URL}logo.png`} alt="IMPROTECH" style={{ width: size, height: size, objectFit: "contain", flexShrink: 0, display: "block" }} />;
 }
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────────
@@ -78,7 +74,7 @@ function LoginPage() {
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Logo + title */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <LogoIcon size={90} />
+          <div style={{ display: "flex", justifyContent: "center" }}><LogoIcon size={110} /></div>
           <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 24, fontWeight: 800, color: B.white, marginTop: 16 }}>IMPROTECH Alumni</div>
           <div style={{ fontSize: 13, color: B.gray, marginTop: 4 }}>Connect to your community</div>
         </div>
@@ -543,29 +539,72 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [userName, setUserName] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
+  const [firebaseError, setFirebaseError] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setUser(u);
-        const userRef = doc(db, "users", u.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          const newRole = u.email === ADMIN_EMAIL ? "admin" : "alumni";
-          await setDoc(userRef, { role:newRole, email:u.email, createdAt:serverTimestamp() });
-          setRole(newRole); setUserName(u.email.split("@")[0]);
-        } else {
-          setRole(userSnap.data().role);
-          setUserName(userSnap.data().name || u.email.split("@")[0]);
-        }
-      } else { setUser(null); setRole(null); setUserName(""); }
+    if (IS_REGISTER) { setAuthLoading(false); return; }
+
+    // Timeout fallback — if Firebase doesn't respond in 8s, show login
+    const timeout = setTimeout(() => {
       setAuthLoading(false);
-    });
-    return unsub;
+      setFirebaseError(true);
+    }, 8000);
+
+    let unsub;
+    try {
+      unsub = onAuthStateChanged(auth, async (u) => {
+        clearTimeout(timeout);
+        try {
+          if (u) {
+            setUser(u);
+            const isAdmin = u.email === ADMIN_EMAIL;
+            try {
+              const userRef = doc(db, "users", u.uid);
+              const userSnap = await getDoc(userRef);
+              if (!userSnap.exists()) {
+                const newRole = isAdmin ? "admin" : "alumni";
+                await setDoc(userRef, { role: newRole, email: u.email, createdAt: serverTimestamp() });
+                setRole(newRole);
+                setUserName(u.email.split("@")[0]);
+              } else {
+                setRole(userSnap.data().role || (isAdmin ? "admin" : "alumni"));
+                setUserName(userSnap.data().name || u.email.split("@")[0]);
+              }
+            } catch {
+              // Firestore error — use email to determine role
+              setRole(isAdmin ? "admin" : "alumni");
+              setUserName(u.email.split("@")[0]);
+            }
+          } else {
+            setUser(null); setRole(null); setUserName("");
+          }
+        } catch {}
+        setAuthLoading(false);
+      }, (err) => {
+        clearTimeout(timeout);
+        console.error("Auth error:", err);
+        setAuthLoading(false);
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      setAuthLoading(false);
+      setFirebaseError(true);
+    }
+    return () => { clearTimeout(timeout); unsub && unsub(); };
   }, []);
 
   if (IS_REGISTER) return <RegisterPage />;
   if (authLoading) return <Loading />;
+  if (firebaseError) return (
+    <div style={{ minHeight:"100vh",background:B.purple,display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Inter',sans-serif" }}>
+      <div style={{ textAlign:"center",maxWidth:360 }}>
+        <div style={{ fontSize:40,marginBottom:16 }}>⚠️</div>
+        <div style={{ fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:800,color:B.white,marginBottom:10 }}>Connection error</div>
+        <div style={{ fontSize:14,color:B.gray,marginBottom:20,lineHeight:1.6 }}>Unable to connect to Firebase. Check your internet connection and try again.</div>
+        <button onClick={() => window.location.reload()} style={{ padding:"12px 28px",borderRadius:12,background:`linear-gradient(135deg,${B.gold},${B.goldLight})`,color:B.purple,fontWeight:800,fontSize:15,border:"none",cursor:"pointer" }}>Retry</button>
+      </div>
+    </div>
+  );
   if (!user) return <LoginPage />;
   if (role === "admin") return <AdminDashboard user={user} />;
   return <AlumniDashboard user={user} userName={userName} />;
