@@ -1138,6 +1138,307 @@ function StudyGroups({ user, userName }) {
   );
 }
 
+
+// ─── MODERATION CENTER ────────────────────────────────────────────────────
+function ModerationCenter({ user }) {
+  const [activeSection, setActiveSection] = useState("overview");
+  const [chatMessages, setChatMessages] = useState([]);
+  const [groupMessages, setGroupMessages] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [studyGroups, setStudyGroups] = useState([]);
+  const [mentors, setMentors] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [alumni, setAlumni] = useState([]);
+  const [bannedUsers, setBannedUsers] = useState([]);
+  const [toast, showToast] = useToast();
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  useEffect(() => {
+    const unsubs = [
+      onSnapshot(collection(db, "messages"), snap => setChatMessages(snap.docs.map(d => ({ ...d.data(), id: d.id, _col: "messages" })).sort((a,b)=>(b.createdAt?.toMillis?.()|| 0)-(a.createdAt?.toMillis?.()||0)))),
+      onSnapshot(collection(db, "jobs"), snap => setJobs(snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a,b)=>(b.createdAt?.toMillis?.()|| 0)-(a.createdAt?.toMillis?.()||0)))),
+      onSnapshot(collection(db, "resources"), snap => setResources(snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a,b)=>(b.createdAt?.toMillis?.()|| 0)-(a.createdAt?.toMillis?.()||0)))),
+      onSnapshot(collection(db, "events"), snap => setEvents(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
+      onSnapshot(collection(db, "studyGroups"), snap => {
+        const groups = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        setStudyGroups(groups);
+        // Load all group messages
+        const allMsgs = [];
+        groups.forEach(g => {
+          onSnapshot(collection(db, `studyGroups/${g.id}/messages`), msgSnap => {
+            const msgs = msgSnap.docs.map(d => ({ ...d.data(), id: d.id, groupId: g.id, groupName: g.name, _col: `studyGroups/${g.id}/messages` }));
+            setGroupMessages(prev => {
+              const filtered = prev.filter(m => m.groupId !== g.id);
+              return [...filtered, ...msgs].sort((a,b)=>(b.createdAt?.toMillis?.()|| 0)-(a.createdAt?.toMillis?.()||0));
+            });
+          });
+        });
+      }),
+      onSnapshot(collection(db, "mentors"), snap => setMentors(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
+      onSnapshot(collection(db, "mentorRequests"), snap => setRequests(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
+      onSnapshot(collection(db, "alumni"), snap => setAlumni(snap.docs.map(d => ({ ...d.data(), firestoreId: d.id })))),
+      onSnapshot(collection(db, "bannedUsers"), snap => setBannedUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
+    ];
+    return () => unsubs.forEach(u => u && u());
+  }, []);
+
+  const del = async (col, id, label) => {
+    try {
+      await deleteDoc(doc(db, col, id));
+      showToast(`${label} deleted.`, "error");
+    } catch(e) { showToast("Error deleting.", "error"); }
+    setConfirmDelete(null);
+  };
+
+  const banUser = async (email, name) => {
+    if (!window.confirm(`Ban ${name} (${email})? They will lose access.`)) return;
+    await addDoc(collection(db, "bannedUsers"), { email, name, bannedBy: user.email, bannedAt: serverTimestamp() });
+    showToast(`${name} has been banned.`, "error");
+  };
+
+  const unbanUser = async (id, name) => {
+    await deleteDoc(doc(db, "bannedUsers", id));
+    showToast(`${name} has been unbanned.`, "success");
+  };
+
+  const bannedEmails = bannedUsers.map(b => b.email);
+  const totalContent = chatMessages.length + groupMessages.length + jobs.length + resources.length;
+
+  const SECTIONS = [
+    { id: "overview", label: "Overview", icon: "◉" },
+    { id: "chat", label: `Chat (${chatMessages.length})`, icon: "💬" },
+    { id: "groupchat", label: `Group Chats (${groupMessages.length})`, icon: "👥" },
+    { id: "jobs", label: `Jobs (${jobs.length})`, icon: "💼" },
+    { id: "resources", label: `Resources (${resources.length})`, icon: "📚" },
+    { id: "events", label: `Events (${events.length})`, icon: "📅" },
+    { id: "mentors", label: `Mentors (${mentors.length})`, icon: "🎯" },
+    { id: "users", label: `Users (${alumni.length})`, icon: "👤" },
+    { id: "banned", label: `Banned (${bannedUsers.length})`, icon: "🚫" },
+  ];
+
+  const fmt = ts => { if (!ts?.toMillis) return ""; return new Date(ts.toMillis()).toLocaleString([], { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }); };
+
+  const ContentRow = ({ label, sub, date, onDelete, danger, extra }) => (
+    <div style={{ display:"flex", gap:12, alignItems:"flex-start", padding:"12px 0", borderBottom:`1px solid ${B.purpleLight}22` }}>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:13, color: danger ? B.red : B.white, fontWeight:600, lineHeight:1.5 }}>{label}</div>
+        {sub && <div style={{ fontSize:11, color:B.gray, marginTop:2 }}>{sub}</div>}
+        {extra && <div style={{ marginTop:6 }}>{extra}</div>}
+      </div>
+      {date && <div style={{ fontSize:11, color:B.gray, flexShrink:0, marginTop:2 }}>{date}</div>}
+      <button onClick={onDelete} style={{ padding:"4px 12px", borderRadius:6, background:`${B.red}22`, color:B.red, border:`1px solid ${B.red}33`, cursor:"pointer", fontSize:11, fontWeight:700, flexShrink:0 }}>Delete</button>
+    </div>
+  );
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+      <Toast toast={toast} />
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div style={{ position:"fixed", inset:0, background:"#00000088", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:20 }}>
+          <div style={{ background:B.purpleMid, borderRadius:18, padding:28, maxWidth:400, width:"100%", border:`1px solid ${B.red}44` }}>
+            <div style={{ fontSize:32, textAlign:"center", marginBottom:12 }}>⚠️</div>
+            <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:800, fontSize:17, color:B.white, textAlign:"center", marginBottom:10 }}>Confirm Delete</div>
+            <div style={{ fontSize:13, color:B.gray, textAlign:"center", marginBottom:20, lineHeight:1.6 }}>Are you sure you want to delete this content? This action cannot be undone.</div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={() => del(confirmDelete.col, confirmDelete.id, confirmDelete.label)} style={{ flex:1, padding:"12px", borderRadius:10, background:B.red, color:"#fff", border:"none", fontWeight:800, cursor:"pointer", fontSize:14 }}>Yes, Delete</button>
+              <button onClick={() => setConfirmDelete(null)} style={{ flex:1, padding:"12px", borderRadius:10, background:`${B.white}11`, color:B.gray, border:`1px solid ${B.purpleLight}44`, cursor:"pointer", fontWeight:700 }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div style={{ fontFamily:"'Sora', sans-serif", fontSize:22, fontWeight:800, marginBottom:4 }}>🛡️ Moderation Center</div>
+        <div style={{ color:B.gray, fontSize:14 }}>Monitor and control all platform activity</div>
+      </div>
+
+      {/* Section nav */}
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+        {SECTIONS.map(s => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)} style={{ padding:"7px 14px", borderRadius:20, background:activeSection===s.id ? B.red : `${B.purpleLight}33`, color:activeSection===s.id ? "#fff" : B.gray, border:"none", cursor:"pointer", fontSize:12, fontWeight:700 }}>{s.icon} {s.label}</button>
+        ))}
+      </div>
+
+      {/* OVERVIEW */}
+      {activeSection === "overview" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))", gap:12 }}>
+            {[
+              { label:"Chat Messages", value:chatMessages.length, color:B.teal, icon:"💬" },
+              { label:"Group Messages", value:groupMessages.length, color:B.purpleLight, icon:"👥" },
+              { label:"Job Posts", value:jobs.length, color:B.gold, icon:"💼" },
+              { label:"Resources", value:resources.length, color:B.green, icon:"📚" },
+              { label:"Events", value:events.length, color:"#9C27B0", icon:"📅" },
+              { label:"Study Groups", value:studyGroups.length, color:B.tealDark, icon:"📖" },
+              { label:"Mentors", value:mentors.length, color:B.gold, icon:"🎯" },
+              { label:"Banned Users", value:bannedUsers.length, color:B.red, icon:"🚫" },
+            ].map(s => (
+              <div key={s.label} style={{ background:`${s.color}22`, border:`1px solid ${s.color}44`, borderRadius:12, padding:"14px 16px", textAlign:"center" }}>
+                <div style={{ fontSize:20, marginBottom:4 }}>{s.icon}</div>
+                <div style={{ fontSize:22, fontWeight:800, color:s.color, fontFamily:"'Sora', sans-serif" }}>{s.value}</div>
+                <div style={{ fontSize:11, color:B.gray, marginTop:2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent activity */}
+          <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+            <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:14, marginBottom:14 }}>🕐 Recent Chat Messages</div>
+            {chatMessages.slice(0, 5).map(m => (
+              <ContentRow key={m.id} label={`"${m.text}"`} sub={`${m.senderName} · ${m.senderEmail}`} date={fmt(m.createdAt)} onDelete={() => setConfirmDelete({ col:"messages", id:m.id, label:"Message" })} />
+            ))}
+            {chatMessages.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No messages yet.</div>}
+          </div>
+        </div>
+      )}
+
+      {/* CHAT MESSAGES */}
+      {activeSection === "chat" && (
+        <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, marginBottom:14 }}>💬 All Chat Messages ({chatMessages.length})</div>
+          {chatMessages.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No messages.</div>}
+          {chatMessages.map(m => (
+            <ContentRow key={m.id}
+              label={`"${m.text}"`}
+              sub={`From: ${m.senderName} (${m.senderEmail})`}
+              date={fmt(m.createdAt)}
+              danger={m.text.length < 2}
+              onDelete={() => setConfirmDelete({ col:"messages", id:m.id, label:"Message" })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* GROUP CHAT MESSAGES */}
+      {activeSection === "groupchat" && (
+        <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, marginBottom:14 }}>👥 All Study Group Messages ({groupMessages.length})</div>
+          {groupMessages.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No group messages.</div>}
+          {groupMessages.map(m => (
+            <ContentRow key={m.id}
+              label={`"${m.text}"`}
+              sub={`${m.senderName} in ${m.groupName}`}
+              date={fmt(m.createdAt)}
+              onDelete={() => setConfirmDelete({ col:m._col, id:m.id, label:"Group Message" })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* JOBS */}
+      {activeSection === "jobs" && (
+        <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, marginBottom:14 }}>💼 All Job Posts ({jobs.length})</div>
+          {jobs.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No jobs posted.</div>}
+          {jobs.map(j => (
+            <ContentRow key={j.id}
+              label={`${j.title} @ ${j.company}`}
+              sub={`Posted by: ${j.postedBy} · ${j.country} · ${j.type}`}
+              date={fmt(j.createdAt)}
+              onDelete={() => setConfirmDelete({ col:"jobs", id:j.id, label:"Job Post" })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* RESOURCES */}
+      {activeSection === "resources" && (
+        <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, marginBottom:14 }}>📚 All Resources ({resources.length})</div>
+          {resources.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No resources shared.</div>}
+          {resources.map(r => (
+            <ContentRow key={r.id}
+              label={r.title}
+              sub={`By: ${r.addedBy} · ${r.category} · ${r.cert}`}
+              date={fmt(r.createdAt)}
+              onDelete={() => setConfirmDelete({ col:"resources", id:r.id, label:"Resource" })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* EVENTS */}
+      {activeSection === "events" && (
+        <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, marginBottom:14 }}>📅 All Events ({events.length})</div>
+          {events.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No events.</div>}
+          {events.map(e => (
+            <ContentRow key={e.id}
+              label={e.title}
+              sub={`${e.type} · ${e.date} · ${(e.attendees||[]).length} attendees`}
+              onDelete={() => setConfirmDelete({ col:"events", id:e.id, label:"Event" })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* MENTORS */}
+      {activeSection === "mentors" && (
+        <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, marginBottom:14 }}>🎯 Registered Mentors ({mentors.length})</div>
+          {mentors.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No mentors registered.</div>}
+          {mentors.map(m => (
+            <ContentRow key={m.id}
+              label={m.name}
+              sub={`${m.email} · ${m.cert} · ${m.expertise}`}
+              onDelete={() => setConfirmDelete({ col:"mentors", id:m.id, label:"Mentor" })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* USERS */}
+      {activeSection === "users" && (
+        <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+          <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, marginBottom:14 }}>👤 All Alumni Users ({alumni.length})</div>
+          {alumni.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No alumni yet.</div>}
+          {alumni.map(a => {
+            const isBanned = bannedEmails.includes(a.email);
+            return (
+              <div key={a.firestoreId} style={{ display:"flex", gap:12, alignItems:"center", padding:"12px 0", borderBottom:`1px solid ${B.purpleLight}22` }}>
+                <Avatar name={a.name} size={40} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, color:isBanned ? B.red : B.white, fontWeight:600 }}>{a.name} {isBanned && "🚫 Banned"}</div>
+                  <div style={{ fontSize:11, color:B.gray, marginTop:2 }}>{a.email} · {a.cert} · {a.country}</div>
+                </div>
+                <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+                  {!isBanned ? (
+                    <button onClick={() => banUser(a.email, a.name)} style={{ padding:"5px 12px", borderRadius:6, background:`${B.red}22`, color:B.red, border:`1px solid ${B.red}33`, cursor:"pointer", fontSize:11, fontWeight:700 }}>🚫 Ban</button>
+                  ) : (
+                    <button onClick={() => { const b = bannedUsers.find(b=>b.email===a.email); if(b) unbanUser(b.id, a.name); }} style={{ padding:"5px 12px", borderRadius:6, background:`${B.green}22`, color:B.green, border:`1px solid ${B.green}33`, cursor:"pointer", fontSize:11, fontWeight:700 }}>✓ Unban</button>
+                  )}
+                  <button onClick={() => { if(window.confirm(`Remove ${a.name} from alumni?`)) deleteDoc(doc(db,"alumni",a.firestoreId)); }} style={{ padding:"5px 12px", borderRadius:6, background:`${B.gray}22`, color:B.gray, border:`1px solid ${B.gray}33`, cursor:"pointer", fontSize:11, fontWeight:700 }}>Remove</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* BANNED */}
+      {activeSection === "banned" && (
+        <div style={{ background:B.purpleMid, borderRadius:16, padding:20, border:`1px solid ${B.red}33` }}>
+          <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.red, marginBottom:14 }}>🚫 Banned Users ({bannedUsers.length})</div>
+          {bannedUsers.length === 0 && <div style={{ color:B.gray, fontSize:13 }}>No banned users.</div>}
+          {bannedUsers.map(b => (
+            <div key={b.id} style={{ display:"flex", gap:12, alignItems:"center", padding:"12px 0", borderBottom:`1px solid ${B.purpleLight}22` }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, color:B.red, fontWeight:600 }}>🚫 {b.name}</div>
+                <div style={{ fontSize:11, color:B.gray, marginTop:2 }}>{b.email} · Banned by {b.bannedBy}</div>
+              </div>
+              <button onClick={() => unbanUser(b.id, b.name)} style={{ padding:"5px 14px", borderRadius:6, background:`${B.green}22`, color:B.green, border:`1px solid ${B.green}33`, cursor:"pointer", fontSize:11, fontWeight:700 }}>✓ Unban</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── LAYOUT ───────────────────────────────────────────────────────────────
 function AppLayout({ user, userName, isAdmin, tabs, activeTab, setTab, children, rightActions }) {
   return (
@@ -1192,6 +1493,7 @@ function AlumniDashboard({ user, userName }) {
     { id: "certs", label: "My Certs", icon: "📜" },
     { id: "events", label: "Events", icon: "📅" },
     { id: "groups", label: "Study Groups", icon: "👥" },
+    { id: "moderation", label: "Moderation", icon: "🛡️" },
   ];
 
   if (loading) return <Loading />;
@@ -1274,6 +1576,7 @@ function AdminDashboard({ user }) {
     { id: "certs", label: "Cert Tracker", icon: "📜" },
     { id: "events", label: "Events", icon: "📅" },
     { id: "groups", label: "Study Groups", icon: "👥" },
+    { id: "moderation", label: "Moderation", icon: "🛡️" },
   ];
 
   if (loading) return <Loading />;
@@ -1339,6 +1642,7 @@ function AdminDashboard({ user }) {
       {tab === "certs" && <CertTracker user={user} userName="Admin" isAdmin={true} allAlumni={alumni} />}
       {tab === "events" && <Events user={user} isAdmin={true} />}
       {tab === "groups" && <StudyGroups user={user} userName="Admin" />}
+      {tab === "moderation" && <ModerationCenter user={user} />}
     </AppLayout>
   );
 }
@@ -1528,5 +1832,24 @@ export default function App() {
   if (authLoading) return <Loading />;
   if (!user) return <LoginPage />;
   if (role === "admin") return <AdminDashboard user={user} />;
+  // Check if user is banned
+  const [banned, setBanned] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(collection(db, "bannedUsers"), snap => {
+      setBanned(snap.docs.some(d => d.data().email === user.email));
+    });
+    return unsub;
+  }, [user]);
+  if (banned) return (
+    <div style={{ minHeight:"100vh", background:B.purple, display:"flex", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"'Inter', sans-serif" }}>
+      <div style={{ textAlign:"center", maxWidth:360 }}>
+        <div style={{ fontSize:60, marginBottom:16 }}>🚫</div>
+        <div style={{ fontFamily:"'Sora', sans-serif", fontSize:20, fontWeight:800, color:B.white, marginBottom:10 }}>Account Suspended</div>
+        <div style={{ fontSize:14, color:B.gray, lineHeight:1.6, marginBottom:20 }}>Your account has been suspended. Please contact the admin for more information.</div>
+        <button onClick={() => signOut(auth)} style={{ padding:"10px 24px", borderRadius:10, background:`linear-gradient(135deg, ${B.gold}, ${B.goldLight})`, color:B.purple, fontWeight:800, border:"none", cursor:"pointer" }}>Sign Out</button>
+      </div>
+    </div>
+  );
   return <AlumniDashboard user={user} userName={userName} />;
 }
