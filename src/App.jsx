@@ -2066,6 +2066,16 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [userName, setUserName] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
+  const [banned, setBanned] = useState(false);
+
+  // Check if user is banned
+  useEffect(() => {
+    if (!user || role === "admin") { setBanned(false); return; }
+    const unsub = onSnapshot(collection(db, "bannedUsers"), snap => {
+      setBanned(snap.docs.some(d => d.data().email === user.email));
+    });
+    return unsub;
+  }, [user, role]);
 
   useEffect(() => {
     if (IS_REGISTER) { setAuthLoading(false); return; }
@@ -2099,15 +2109,6 @@ export default function App() {
   if (authLoading) return <Loading />;
   if (!user) return <LoginPage />;
   if (role === "admin") return <AdminDashboard user={user} />;
-  // Check if user is banned
-  const [banned, setBanned] = useState(false);
-  useEffect(() => {
-    if (!user) return;
-    const unsub = onSnapshot(collection(db, "bannedUsers"), snap => {
-      setBanned(snap.docs.some(d => d.data().email === user.email));
-    });
-    return unsub;
-  }, [user]);
   if (banned) return (
     <div style={{ minHeight:"100vh", background:B.purple, display:"flex", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"'Inter', sans-serif" }}>
       <div style={{ textAlign:"center", maxWidth:360 }}>
