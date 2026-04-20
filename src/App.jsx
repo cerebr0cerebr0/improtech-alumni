@@ -1705,25 +1705,51 @@ function SocialFeed({ user, userName, isAdmin }) {
 // ─── LAYOUT ───────────────────────────────────────────────────────────────
 function AppLayout({ user, userName, isAdmin, tabs, activeTab, setTab, children, rightActions }) {
   return (
-    <div style={{ minHeight: "100vh", background: B.purple, fontFamily: "'Inter', 'Segoe UI', sans-serif", color: B.white }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; } select option { background: #3D2070; } ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #5A3090; border-radius: 3px; } input::placeholder, textarea::placeholder { color: #8B7FAA; }`}</style>
-      <div style={{ background: `linear-gradient(135deg, ${B.purpleMid}, ${B.purple})`, borderBottom: `1px solid ${B.purpleLight}44`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 16, position: "sticky", top: 0, zIndex: 100, flexWrap: "wrap" }}>
-        <LogoIcon size={36} />
-        <div>
-          <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 16 }}>IMPROTECH Alumni</div>
-          <div style={{ fontSize: 11, color: B.gray, marginTop: 2 }}>{isAdmin ? "👑 Admin" : "🎓 Alumni"} · {userName}</div>
-        </div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+    <div style={{ minHeight: "100vh", background: "#F4F2FA", fontFamily: "'Inter', 'Segoe UI', sans-serif", color: B.purple }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        select option { background: #3D2070; color: white; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #5A3090; border-radius: 3px; }
+        input::placeholder, textarea::placeholder { color: #8B7FAA; }
+        .nav-link:hover { color: ${B.gold} !important; }
+      `}</style>
+
+      {/* Top bar */}
+      <div style={{ background: B.purple, padding: "6px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: 12, color: B.gray }}>Training Center · Accra, Ghana</div>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           {rightActions}
-          <button onClick={() => signOut(auth)} style={{ padding: "8px 14px", borderRadius: 10, background: `${B.white}11`, color: B.gray, border: `1px solid ${B.purpleLight}44`, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Sign Out</button>
+          <span style={{ fontSize: 12, color: B.gray }}>{isAdmin ? "👑 Admin" : "🎓"} {userName}</span>
+          <button onClick={() => signOut(auth)} style={{ padding: "4px 12px", borderRadius: 6, background: "transparent", color: B.gray, border: `1px solid ${B.purpleLight}66`, cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Sign Out</button>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 0, padding: "0 24px", borderBottom: `1px solid ${B.purpleLight}33`, background: B.purpleMid, overflowX: "auto" }}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "12px 16px", background: activeTab === t.id ? B.purple : "transparent", color: activeTab === t.id ? B.gold : B.gray, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, borderBottom: activeTab === t.id ? `2px solid ${B.gold}` : "2px solid transparent", transition: "all 0.2s", whiteSpace: "nowrap", fontFamily: "'Sora', sans-serif" }}>{t.icon} {t.label}</button>
-        ))}
+
+      {/* Main header */}
+      <div style={{ background: B.white, borderBottom: `3px solid ${B.gold}`, padding: "0 32px", display: "flex", alignItems: "center", gap: 20, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px #0001" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 0" }}>
+          <LogoIcon size={40} />
+          <div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 17, color: B.purple, lineHeight: 1 }}>IMPROTECH</div>
+            <div style={{ fontSize: 11, color: B.gold, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Alumni Network</div>
+          </div>
+        </div>
+        <nav style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} className="nav-link" style={{
+              padding: "20px 14px", background: "transparent", border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: activeTab === t.id ? 700 : 500,
+              color: activeTab === t.id ? B.gold : B.darkGray,
+              borderBottom: activeTab === t.id ? `3px solid ${B.gold}` : "3px solid transparent",
+              marginBottom: -3, transition: "all 0.2s", whiteSpace: "nowrap",
+              fontFamily: activeTab === t.id ? "'Sora', sans-serif" : "inherit",
+            }}>{t.label}</button>
+          ))}
+        </nav>
       </div>
-      <div style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>{children}</div>
+
+      <div style={{ maxWidth: activeTab === "home" || activeTab === "dashboard" ? "100%" : 1100, margin: "0 auto", padding: activeTab === "home" || activeTab === "dashboard" ? 0 : 32 }}>{children}</div>
     </div>
   );
 }
@@ -1760,35 +1786,169 @@ function AlumniDashboard({ user, userName }) {
 
   if (loading) return <Loading />;
 
+  const withStories = alumni.filter(a => a.story);
+
   return (
     <AppLayout user={user} userName={userName} isAdmin={false} tabs={TABS} activeTab={tab} setTab={setTab}>
       {tab === "home" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <div>
-            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Welcome back, {userName.split(" ")[0]} 👋</div>
-            <div style={{ color: B.gray, fontSize: 14 }}>Connect with {alumni.length} IMPROTECH alumni worldwide</div>
-          </div>
-          <AlumniOfTheMonth alumni={alumni} isAdmin={false} />
-          <SocialFeed user={user} userName={userName} isAdmin={false} />
-          <AlumniMap alumni={alumni} />
-          <div>
-            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>🕐 Recently joined</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
-              {alumni.slice(0, 3).map(a => <AlumniCard key={a.firestoreId} a={a} onClick={() => setTab("directory")} />)}
+        <div>
+          {/* ── HERO ── */}
+          <div style={{ position: "relative", background: `linear-gradient(135deg, ${B.purple} 0%, ${B.purpleMid} 60%, ${B.purpleLight} 100%)`, padding: "80px 48px 100px", overflow: "hidden", textAlign: "center" }}>
+            {/* geometric SVG background like Central University */}
+            <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.08 }} viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice">
+              <polygon points="0,0 300,0 150,200" fill={B.gold} />
+              <polygon points="300,0 600,0 450,200" fill={B.teal} />
+              <polygon points="600,0 900,0 750,200" fill={B.gold} />
+              <polygon points="900,0 1200,0 1050,200" fill={B.teal} />
+              <polygon points="150,200 450,200 300,400" fill={B.teal} />
+              <polygon points="450,200 750,200 600,400" fill={B.gold} />
+              <polygon points="750,200 1050,200 900,400" fill={B.teal} />
+              <polygon points="0,200 150,0 0,0" fill={B.purpleLight} />
+              <polygon points="1200,0 1050,200 1200,200" fill={B.purpleLight} />
+            </svg>
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ display: "inline-block", background: `${B.gold}22`, border: `1px solid ${B.gold}55`, borderRadius: 20, padding: "6px 18px", fontSize: 12, color: B.gold, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 20 }}>Training Center · Since 2015</div>
+              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 48, fontWeight: 800, color: B.white, lineHeight: 1.1, marginBottom: 16 }}>Alumni Portal</div>
+              <div style={{ fontSize: 16, color: `${B.white}BB`, maxWidth: 560, margin: "0 auto 32px", lineHeight: 1.7 }}>
+                Get connected to our global network of {alumni.length}+ IMPROTECH alumni. Build your network, find opportunities, and stay connected with fellow graduates across Africa and beyond.
+              </div>
+              <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+                <button onClick={() => setTab("directory")} style={{ padding: "14px 32px", borderRadius: 8, background: B.gold, color: B.purple, border: "none", cursor: "pointer", fontSize: 15, fontWeight: 800, fontFamily: "'Sora', sans-serif" }}>Connect Now</button>
+                <button onClick={() => setTab("jobs")} style={{ padding: "14px 32px", borderRadius: 8, background: "transparent", color: B.white, border: `2px solid ${B.white}44`, cursor: "pointer", fontSize: 15, fontWeight: 600 }}>View Jobs</button>
+              </div>
             </div>
+            {/* Stats bar */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 0 }}>
+              {[{ n: `${alumni.length}+`, label: "Alumni" }, { n: "24", label: "Countries" }, { n: "2015", label: "Founded" }, { n: "100%", label: "Practical" }].map((s, i) => (
+                <div key={i} style={{ flex: 1, maxWidth: 200, padding: "16px 24px", background: i % 2 === 0 ? `${B.gold}22` : `${B.teal}22`, borderTop: `2px solid ${i % 2 === 0 ? B.gold : B.teal}44`, textAlign: "center" }}>
+                  <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 24, fontWeight: 800, color: i % 2 === 0 ? B.gold : B.teal }}>{s.n}</div>
+                  <div style={{ fontSize: 12, color: `${B.white}88`, marginTop: 2 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── 3 FEATURE CARDS ── */}
+          <div style={{ background: B.white, padding: "56px 48px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, maxWidth: 1100, margin: "0 auto" }}>
+              {[
+                { icon: "🌍", color: B.gold, title: "Alumni Network", desc: "Reconnect with classmates, explore the global directory, and build lasting professional relationships across Africa and beyond." },
+                { icon: "💼", color: B.teal, title: "Career Opportunities", desc: "Find jobs, discover mentors, and access resources. Your IMPROTECH certification opens doors — our network helps you walk through them." },
+                { icon: "🤝", color: B.purpleLight, title: "Get Involved", desc: "Share your journey, mentor the next generation, join study groups, and give back to a community that helped shape your career." },
+              ].map((c, i) => (
+                <div key={i} style={{ background: "#FAFAF8", border: `1px solid ${c.color}33`, borderTop: `4px solid ${c.color}`, borderRadius: 12, padding: 32, cursor: "pointer", transition: "all 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = `0 8px 32px ${c.color}22`}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}>
+                  <div style={{ fontSize: 32, marginBottom: 16 }}>{c.icon}</div>
+                  <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 18, color: c.color, marginBottom: 12 }}>{c.title}</div>
+                  <div style={{ fontSize: 14, color: B.darkGray, lineHeight: 1.7 }}>{c.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── FEED ── */}
+          <div style={{ background: "#F4F2FA", padding: "48px 48px 0" }}>
+            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
+                <div style={{ width: 40, height: 3, background: B.gold, borderRadius: 2 }} />
+                <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, color: B.purple }}>Community Feed</div>
+                <div style={{ width: 40, height: 3, background: B.gold, borderRadius: 2 }} />
+              </div>
+              <SocialFeed user={user} userName={userName} isAdmin={false} />
+            </div>
+          </div>
+
+          {/* ── ALUMNI STORIES GRID ── */}
+          <div style={{ background: B.white, padding: "56px 48px" }}>
+            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                <div style={{ width: 40, height: 3, background: B.gold, borderRadius: 2 }} />
+                <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, color: B.purple }}>Alumni Stories</div>
+                <div style={{ width: 40, height: 3, background: B.gold, borderRadius: 2 }} />
+              </div>
+              <div style={{ color: B.darkGray, fontSize: 14, marginBottom: 32 }}>Inspiring journeys from our graduates across Africa and beyond</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
+                {withStories.map((a, i) => {
+                  const cols = [B.gold, B.teal, B.purpleLight, B.green]; const ac = cols[i % cols.length];
+                  return (
+                    <div key={a.firestoreId} style={{ background: "#FAFAF8", borderRadius: 12, overflow: "hidden", border: "1px solid #E8E4F4", transition: "all 0.2s", cursor: "pointer" }}
+                      onMouseEnter={e => e.currentTarget.style.boxShadow = "0 8px 32px #0001"}
+                      onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}>
+                      {/* card top color band */}
+                      <div style={{ height: 6, background: `linear-gradient(90deg, ${ac}, ${ac}88)` }} />
+                      <div style={{ padding: 24 }}>
+                        <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 16 }}>
+                          <Avatar name={a.name} size={52} />
+                          <div>
+                            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 15, color: B.purple }}>{a.name}</div>
+                            <div style={{ fontSize: 12, color: B.darkGray, marginTop: 2 }}>{a.flag} {a.country} · {a.cert}</div>
+                            <div style={{ fontSize: 12, color: ac, fontWeight: 700, marginTop: 2 }}>{a.role}</div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 13, color: B.darkGray, lineHeight: 1.7, fontStyle: "italic", borderLeft: `3px solid ${ac}`, paddingLeft: 12 }}>"{a.story?.slice(0, 120)}..."</div>
+                        <div style={{ marginTop: 16, fontSize: 12, color: B.darkGray }}>@ <span style={{ color: ac, fontWeight: 600 }}>{a.employer}</span></div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {withStories.length === 0 && <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 40, color: B.gray }}>Stories will appear here once alumni share their journeys.</div>}
+              </div>
+              <div style={{ textAlign: "center", marginTop: 32 }}>
+                <button onClick={() => setTab("stories")} style={{ padding: "12px 28px", borderRadius: 8, background: "transparent", color: B.purpleLight, border: `2px solid ${B.purpleLight}`, cursor: "pointer", fontSize: 14, fontWeight: 700 }}>View All Stories →</button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── MAP ── */}
+          <div style={{ background: "#F4F2FA", padding: "56px 48px" }}>
+            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                <div style={{ width: 40, height: 3, background: B.gold, borderRadius: 2 }} />
+                <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, color: B.purple }}>Global Alumni Map</div>
+                <div style={{ width: 40, height: 3, background: B.gold, borderRadius: 2 }} />
+              </div>
+              <div style={{ color: B.darkGray, fontSize: 14, marginBottom: 24 }}>Our graduates are making an impact across the world</div>
+              <AlumniMap alumni={alumni} />
+            </div>
+          </div>
+
+          {/* ── RECENTLY JOINED ── */}
+          <div style={{ background: B.white, padding: "56px 48px" }}>
+            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+                <div style={{ width: 40, height: 3, background: B.gold, borderRadius: 2 }} />
+                <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, color: B.purple }}>Recently Joined</div>
+                <div style={{ width: 40, height: 3, background: B.gold, borderRadius: 2 }} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                {alumni.slice(0, 3).map(a => <AlumniCard key={a.firestoreId} a={a} onClick={() => setTab("directory")} />)}
+              </div>
+            </div>
+          </div>
+
+          {/* ── FOOTER ── */}
+          <div style={{ background: B.purple, padding: "40px 48px", textAlign: "center" }}>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 18, color: B.white, marginBottom: 8 }}>IMPROTECH Alumni Network</div>
+            <div style={{ fontSize: 13, color: B.gray }}>Training Center · Accra, Ghana · Since 2015</div>
+            <div style={{ marginTop: 16, fontSize: 13, color: B.gray }}>info@improtech.edu.gh · 0266134658</div>
           </div>
         </div>
       )}
-      {tab === "directory" && <Directory alumni={alumni} onDelete={() => {}} isAdmin={false} />}
-      {tab === "map" && <div style={{ display: "flex", flexDirection: "column", gap: 20 }}><div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>Alumni World Map</div><AlumniMap alumni={alumni} /></div>}
-      {tab === "chat" && <ChatPanel user={user} userName={userName} />}
-      {tab === "stories" && <Stories alumni={alumni} />}
-      {tab === "resources" && <ResourceLibrary user={user} isAdmin={false} />}
-      {tab === "jobs" && <JobBoard user={user} isAdmin={false} />}
-      {tab === "mentorship" && <Mentorship user={user} userName={userName} alumni={alumni} />}
-      {tab === "certs" && <CertTracker user={user} userName={userName} isAdmin={false} allAlumni={alumni} />}
-      {tab === "events" && <Events user={user} isAdmin={false} />}
-      {tab === "groups" && <StudyGroups user={user} userName={userName} />}
+      {tab !== "home" && (
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: 32, color: B.purple }}>
+          {tab === "directory" && <Directory alumni={alumni} onDelete={() => {}} isAdmin={false} />}
+          {tab === "map" && <div style={{ display: "flex", flexDirection: "column", gap: 20 }}><div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, color: B.purple }}>Alumni World Map</div><AlumniMap alumni={alumni} /></div>}
+          {tab === "chat" && <ChatPanel user={user} userName={userName} />}
+          {tab === "stories" && <Stories alumni={alumni} />}
+          {tab === "resources" && <ResourceLibrary user={user} isAdmin={false} />}
+          {tab === "jobs" && <JobBoard user={user} isAdmin={false} />}
+          {tab === "mentorship" && <Mentorship user={user} userName={userName} alumni={alumni} />}
+          {tab === "certs" && <CertTracker user={user} userName={userName} isAdmin={false} allAlumni={alumni} />}
+          {tab === "events" && <Events user={user} isAdmin={false} />}
+          {tab === "groups" && <StudyGroups user={user} userName={userName} />}
+        </div>
+      )}
     </AppLayout>
   );
 }
