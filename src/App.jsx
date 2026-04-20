@@ -1561,38 +1561,34 @@ function SocialFeed({ user, userName, isAdmin }) {
 
   const totalReactions = (p) => Object.values(p.reactions || {}).reduce((a, b) => a + b.length, 0);
 
+  const lightInput = { width:"100%", padding:"10px 14px", borderRadius:10, background:B.white, border:`1.5px solid #E0DAF0`, color:B.purple, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" };
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:20, maxWidth:680, margin:"0 auto" }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       <Toast toast={toast} />
-      <div>
-        <div style={{ fontFamily:"'Sora', sans-serif", fontSize:22, fontWeight:800, marginBottom:4 }}>📸 Alumni Feed</div>
-        <div style={{ color:B.gray, fontSize:14 }}>Share moments, achievements & updates with the community</div>
-      </div>
 
       {/* Composer */}
-      <div style={{ background:B.purpleMid, borderRadius:18, padding:20, border:`1px solid ${B.purpleLight}33` }}>
+      <div style={{ background:B.white, borderRadius:14, padding:20, border:`1px solid #E0DAF0`, boxShadow:"0 2px 12px #00000008" }}>
         <div style={{ display:"flex", gap:12, marginBottom:14 }}>
-          <Avatar name={userName} size={44} />
+          <Avatar name={userName} size={42} />
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
             placeholder={`What's on your mind, ${userName.split(" ")[0]}?`}
-            style={{ ...iStyle, resize:"none", minHeight:80, flex:1, margin:0, borderRadius:14, fontSize:15 }}
+            style={{ ...lightInput, resize:"none", minHeight:72, flex:1, fontSize:14, lineHeight:1.6 }}
           />
         </div>
-
         {imagePreview && (
           <div style={{ position:"relative", marginBottom:14 }}>
-            <img src={imagePreview} alt="preview" style={{ width:"100%", maxHeight:400, objectFit:"cover", borderRadius:12 }} />
-            <button onClick={() => { setImage(null); setImagePreview(null); }} style={{ position:"absolute", top:10, right:10, background:"#000a", color:"#fff", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+            <img src={imagePreview} alt="preview" style={{ width:"100%", maxHeight:320, objectFit:"cover", borderRadius:10, border:`1px solid #E0DAF0` }} />
+            <button onClick={() => { setImage(null); setImagePreview(null); }} style={{ position:"absolute", top:8, right:8, background:"#000a", color:"#fff", border:"none", borderRadius:"50%", width:28, height:28, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
           </div>
         )}
-
-        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+        <div style={{ display:"flex", gap:10, alignItems:"center", borderTop:`1px solid #F0EAF8`, paddingTop:12 }}>
           <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleFile} />
-          <button onClick={() => fileRef.current?.click()} style={{ padding:"9px 16px", borderRadius:10, background:`${B.teal}22`, color:B.teal, border:`1px solid ${B.teal}44`, cursor:"pointer", fontSize:13, fontWeight:700 }}>📷 Photo</button>
+          <button onClick={() => fileRef.current?.click()} style={{ padding:"8px 14px", borderRadius:8, background:`${B.teal}15`, color:B.tealDark, border:`1px solid ${B.teal}33`, cursor:"pointer", fontSize:12, fontWeight:700 }}>📷 Photo</button>
           <div style={{ flex:1 }} />
-          <button onClick={post} disabled={posting || (!text.trim() && !image)} style={{ padding:"9px 22px", borderRadius:10, background:text.trim()||image ? `linear-gradient(135deg, ${B.gold}, ${B.goldLight})` : B.darkGray, color:text.trim()||image ? B.purple : B.gray, border:"none", fontWeight:800, fontSize:14, cursor:text.trim()||image?"pointer":"default" }}>
+          <button onClick={post} disabled={posting || (!text.trim() && !image)} style={{ padding:"9px 22px", borderRadius:8, background:text.trim()||image?`linear-gradient(135deg,${B.purple},${B.purpleLight})`:("#E8E4F4"), color:text.trim()||image?B.white:B.gray, border:"none", fontWeight:700, fontSize:13, cursor:text.trim()||image?"pointer":"default", transition:"all 0.2s" }}>
             {posting ? "Sharing..." : "Share →"}
           </button>
         </div>
@@ -1600,9 +1596,9 @@ function SocialFeed({ user, userName, isAdmin }) {
 
       {/* Posts */}
       {posts.length === 0 && (
-        <div style={{ textAlign:"center", padding:60, color:B.gray }}>
-          <div style={{ fontSize:48, marginBottom:12 }}>📸</div>
-          <div>No posts yet. Be the first to share something!</div>
+        <div style={{ textAlign:"center", padding:48, color:B.gray, background:B.white, borderRadius:14, border:`1px solid #E0DAF0` }}>
+          <div style={{ fontSize:40, marginBottom:10 }}>📸</div>
+          <div style={{ fontWeight:600 }}>No posts yet. Be the first to share!</div>
         </div>
       )}
 
@@ -1610,87 +1606,60 @@ function SocialFeed({ user, userName, isAdmin }) {
         const myReactions = Object.entries(p.reactions || {}).filter(([, users]) => users.includes(user.uid)).map(([e]) => e);
         const showComments = openComments[p.id];
         const canDelete = isAdmin || p.authorUid === user.uid;
-
         return (
-          <div key={p.id} style={{ background:B.purpleMid, borderRadius:18, border:`1px solid ${B.purpleLight}33`, overflow:"hidden" }}>
-            {/* Post header */}
-            <div style={{ display:"flex", gap:12, alignItems:"center", padding:"16px 20px 12px" }}>
-              <Avatar name={p.authorName} size={44} />
+          <div key={p.id} style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, overflow:"hidden", boxShadow:"0 2px 12px #00000006" }}>
+            <div style={{ display:"flex", gap:12, alignItems:"center", padding:"16px 18px 10px" }}>
+              <Avatar name={p.authorName} size={42} />
               <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, color:B.white, fontSize:15, fontFamily:"'Sora', sans-serif" }}>{p.authorName}</div>
-                <div style={{ fontSize:12, color:B.gray, marginTop:2 }}>{fmt(p.createdAt)}</div>
+                <div style={{ fontWeight:700, color:B.purple, fontSize:14, fontFamily:"'Sora', sans-serif" }}>{p.authorName}</div>
+                <div style={{ fontSize:11, color:B.gray, marginTop:1 }}>{fmt(p.createdAt)}</div>
               </div>
-              {canDelete && (
-                <button onClick={() => deletePost(p.id)} style={{ background:"none", border:"none", color:B.gray, cursor:"pointer", fontSize:18, padding:4 }}>🗑</button>
-              )}
+              {canDelete && <button onClick={() => deletePost(p.id)} style={{ background:"none", border:"none", color:"#CCC", cursor:"pointer", fontSize:16, padding:4 }}>🗑</button>}
             </div>
-
-            {/* Post text */}
-            {p.text && <div style={{ padding:"0 20px 14px", fontSize:15, color:B.offWhite, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{p.text}</div>}
-
-            {/* Post image */}
-            {p.image && (
-              <img src={p.image} alt="post" style={{ width:"100%", maxHeight:500, objectFit:"cover", display:"block" }} />
-            )}
-
-            {/* Reaction summary */}
+            {p.text && <div style={{ padding:"2px 18px 14px", fontSize:14, color:B.darkGray, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{p.text}</div>}
+            {p.image && <img src={p.image} alt="post" style={{ width:"100%", maxHeight:440, objectFit:"cover", display:"block" }} />}
             {totalReactions(p) > 0 && (
-              <div style={{ padding:"10px 20px 0", display:"flex", gap:6, flexWrap:"wrap" }}>
+              <div style={{ padding:"8px 18px 0", display:"flex", gap:6, flexWrap:"wrap", borderTop:`1px solid #F0EAF8` }}>
                 {Object.entries(p.reactions || {}).filter(([, users]) => users.length > 0).map(([emoji, users]) => (
-                  <div key={emoji} style={{ background:`${B.purple}88`, borderRadius:20, padding:"3px 10px", fontSize:13, color:B.offWhite, display:"flex", alignItems:"center", gap:4 }}>
+                  <div key={emoji} style={{ background:"#F8F5FF", borderRadius:20, padding:"2px 10px", fontSize:13, color:B.purple, display:"flex", alignItems:"center", gap:4, border:`1px solid #E0DAF0` }}>
                     {emoji} <span style={{ fontSize:11, color:B.gray }}>{users.length}</span>
                   </div>
                 ))}
-                <div style={{ fontSize:12, color:B.gray, display:"flex", alignItems:"center", marginLeft:4 }}>{totalReactions(p)} reaction{totalReactions(p)>1?"s":""}</div>
               </div>
             )}
-
-            {/* Actions */}
-            <div style={{ padding:"10px 20px", display:"flex", gap:8, borderTop:`1px solid ${B.purpleLight}22`, marginTop:10, flexWrap:"wrap" }}>
+            <div style={{ padding:"10px 18px", display:"flex", gap:6, borderTop:`1px solid #F0EAF8`, flexWrap:"wrap", alignItems:"center" }}>
               {REACTIONS.map(emoji => {
                 const count = (p.reactions?.[emoji] || []).length;
                 const active = myReactions.includes(emoji);
                 return (
-                  <button key={emoji} onClick={() => toggleReaction(p.id, emoji)} style={{ padding:"6px 12px", borderRadius:20, background:active?`${B.gold}33`:`${B.purple}66`, border:active?`1px solid ${B.gold}55`:`1px solid ${B.purpleLight}33`, cursor:"pointer", fontSize:14, display:"flex", alignItems:"center", gap:4, transition:"all 0.15s" }}>
-                    {emoji} {count > 0 && <span style={{ fontSize:11, color:active?B.gold:B.gray }}>{count}</span>}
+                  <button key={emoji} onClick={() => toggleReaction(p.id, emoji)} style={{ padding:"5px 10px", borderRadius:20, background:active?`${B.gold}22`:"#F8F5FF", border:active?`1px solid ${B.gold}88`:`1px solid #E8E4F4`, cursor:"pointer", fontSize:14, display:"flex", alignItems:"center", gap:3, transition:"all 0.15s" }}>
+                    {emoji}{count > 0 && <span style={{ fontSize:10, color:active?B.gold:B.gray, fontWeight:700 }}>{count}</span>}
                   </button>
                 );
               })}
-              <button onClick={() => setOpenComments(c => ({ ...c, [p.id]: !c[p.id] }))} style={{ marginLeft:"auto", padding:"6px 14px", borderRadius:20, background:`${B.purpleLight}33`, border:`1px solid ${B.purpleLight}44`, color:B.gray, cursor:"pointer", fontSize:12, fontWeight:700 }}>
+              <button onClick={() => setOpenComments(c => ({ ...c, [p.id]: !c[p.id] }))} style={{ marginLeft:"auto", padding:"5px 14px", borderRadius:20, background:"#F8F5FF", border:`1px solid #E8E4F4`, color:B.darkGray, cursor:"pointer", fontSize:12, fontWeight:600 }}>
                 💬 {(p.comments||[]).length} comment{(p.comments||[]).length!==1?"s":""}
               </button>
             </div>
-
-            {/* Comments section */}
             {showComments && (
-              <div style={{ padding:"0 20px 16px", borderTop:`1px solid ${B.purpleLight}22` }}>
-                {/* Existing comments */}
+              <div style={{ padding:"0 18px 16px", background:"#FAFAF8", borderTop:`1px solid #F0EAF8` }}>
                 {(p.comments || []).map((c, i) => (
                   <div key={i} style={{ display:"flex", gap:10, marginTop:12, alignItems:"flex-start" }}>
-                    <Avatar name={c.authorName} size={32} />
-                    <div style={{ flex:1, background:`${B.purple}88`, borderRadius:"4px 14px 14px 14px", padding:"8px 12px" }}>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                        <div style={{ fontWeight:700, fontSize:12, color:B.gold, marginBottom:4 }}>{c.authorName}</div>
-                        {(isAdmin || c.uid === user.uid) && (
-                          <button onClick={() => deleteComment(p, i)} style={{ background:"none", border:"none", color:B.gray, cursor:"pointer", fontSize:12, padding:0, marginLeft:8 }}>✕</button>
-                        )}
+                    <Avatar name={c.authorName} size={30} />
+                    <div style={{ flex:1, background:B.white, borderRadius:"4px 12px 12px 12px", padding:"8px 12px", border:`1px solid #E8E4F4` }}>
+                      <div style={{ display:"flex", justifyContent:"space-between" }}>
+                        <div style={{ fontWeight:700, fontSize:12, color:B.purpleLight, marginBottom:3 }}>{c.authorName}</div>
+                        {(isAdmin || c.uid === user.uid) && <button onClick={() => deleteComment(p, i)} style={{ background:"none", border:"none", color:"#CCC", cursor:"pointer", fontSize:11 }}>✕</button>}
                       </div>
-                      <div style={{ fontSize:13, color:B.offWhite, lineHeight:1.5 }}>{c.text}</div>
+                      <div style={{ fontSize:13, color:B.darkGray, lineHeight:1.5 }}>{c.text}</div>
                     </div>
                   </div>
                 ))}
-                {/* Add comment */}
-                <div style={{ display:"flex", gap:10, marginTop:14 }}>
-                  <Avatar name={userName} size={32} />
+                <div style={{ display:"flex", gap:10, marginTop:12 }}>
+                  <Avatar name={userName} size={30} />
                   <div style={{ flex:1, display:"flex", gap:8 }}>
-                    <input
-                      value={commentText[p.id] || ""}
-                      onChange={e => setCommentText(c => ({ ...c, [p.id]: e.target.value }))}
-                      onKeyDown={e => e.key === "Enter" && addComment(p.id)}
-                      placeholder="Write a comment..."
-                      style={{ ...iStyle, margin:0, fontSize:13, borderRadius:20, padding:"8px 14px", flex:1 }}
-                    />
-                    <button onClick={() => addComment(p.id)} disabled={!commentText[p.id]?.trim()} style={{ padding:"8px 16px", borderRadius:20, background:commentText[p.id]?.trim()?`linear-gradient(135deg,${B.teal},${B.tealDark})`:B.darkGray, color:commentText[p.id]?.trim()?"#fff":B.gray, border:"none", cursor:"pointer", fontWeight:700, fontSize:12 }}>Post</button>
+                    <input value={commentText[p.id] || ""} onChange={e => setCommentText(c => ({ ...c, [p.id]: e.target.value }))} onKeyDown={e => e.key === "Enter" && addComment(p.id)} placeholder="Write a comment..." style={{ ...lightInput, fontSize:13, borderRadius:20, padding:"7px 14px" }} />
+                    <button onClick={() => addComment(p.id)} disabled={!commentText[p.id]?.trim()} style={{ padding:"7px 16px", borderRadius:20, background:commentText[p.id]?.trim()?B.purple:"#E8E4F4", color:commentText[p.id]?.trim()?"#fff":B.gray, border:"none", cursor:"pointer", fontWeight:700, fontSize:12 }}>Post</button>
                   </div>
                 </div>
               </div>
@@ -1749,7 +1718,7 @@ function AppLayout({ user, userName, isAdmin, tabs, activeTab, setTab, children,
         </nav>
       </div>
 
-      <div style={{ maxWidth: activeTab === "home" || activeTab === "dashboard" ? "100%" : 1100, margin: "0 auto", padding: activeTab === "home" || activeTab === "dashboard" ? 0 : 32 }}>{children}</div>
+      <div style={{ maxWidth: activeTab === "home" ? "100%" : 1400, margin: "0 auto", padding: activeTab === "home" ? 0 : 0 }}>{children}</div>
     </div>
   );
 }
@@ -2015,56 +1984,109 @@ function AdminDashboard({ user }) {
       <Toast toast={toast} />
 
       {tab === "dashboard" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <div><div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Admin Dashboard</div><div style={{ color: B.gray, fontSize: 14 }}>Real-time data · Firebase ⚡</div></div>
-          <div style={{ background: B.purpleMid, borderRadius: 16, padding: 20, border: `1px solid ${B.gold}33` }}>
-            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 14, color: B.gold, marginBottom: 10 }}>📋 Alumni Registration Link</div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 200, background: `${B.purple}88`, border: `1px solid ${B.purpleLight}55`, borderRadius: 8, padding: "8px 12px", fontSize: 12, color: B.gray, fontFamily: "monospace", wordBreak: "break-all" }}>{REGISTER_LINK}</div>
-              <button onClick={copyLink} style={{ padding: "8px 18px", borderRadius: 8, background: `linear-gradient(135deg, ${B.gold}, ${B.goldLight})`, color: B.purple, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>{linkCopied ? "✓ Copied!" : "Copy"}</button>
-            </div>
-            <div style={{ fontSize: 12, color: B.gray, marginTop: 8 }}>Share this link with alumni — they register and appear here automatically.</div>
+        <div style={{ padding: 32, maxWidth: 1400, margin: "0 auto" }}>
+
+          {/* Page title */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontFamily:"'Sora', sans-serif", fontSize:24, fontWeight:800, color:B.purple }}>Admin Dashboard</div>
+            <div style={{ fontSize:13, color:B.gray, marginTop:4 }}>Real-time overview · Firebase ⚡</div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
-            {[{ label: "Total Alumni", value: stats.total, color: B.gold, sub: "Since 2015" }, { label: "Countries", value: stats.countries, color: B.teal }, { label: "Sectors", value: stats.sectors, color: B.purpleLight }, { label: "Joined Today", value: stats.nouveaux, color: B.green, sub: "Last 24h" }].map(s => (
-              <div key={s.label} style={{ background: `linear-gradient(135deg, ${s.color}22 0%, ${s.color}11 100%)`, border: `1px solid ${s.color}44`, borderRadius: 16, padding: "20px 24px" }}>
-                <div style={{ fontSize: 32, fontWeight: 800, color: s.color, fontFamily: "'Sora', sans-serif" }}>{s.value}</div>
-                <div style={{ fontSize: 13, color: B.gray, fontWeight: 600 }}>{s.label}</div>
-                {s.sub && <div style={{ fontSize: 11, color: B.gray, marginTop: 2 }}>{s.sub}</div>}
+
+          {/* Registration link — compact bar */}
+          <div style={{ background:B.white, borderRadius:12, padding:"14px 20px", border:`1px solid #E0DAF0`, marginBottom:24, display:"flex", gap:16, alignItems:"center", flexWrap:"wrap", boxShadow:"0 2px 8px #00000006" }}>
+            <div style={{ fontWeight:700, fontSize:13, color:B.purple, whiteSpace:"nowrap" }}>📋 Invite Link</div>
+            <div style={{ flex:1, minWidth:200, background:"#F8F5FF", border:`1px solid #E8E4F4`, borderRadius:8, padding:"8px 12px", fontSize:11, color:B.gray, fontFamily:"monospace", wordBreak:"break-all" }}>{REGISTER_LINK}</div>
+            <button onClick={copyLink} style={{ padding:"8px 18px", borderRadius:8, background:linkCopied?B.green:`linear-gradient(135deg,${B.gold},${B.goldLight})`, color:linkCopied?B.white:B.purple, border:"none", fontWeight:700, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>{linkCopied?"✓ Copied!":"Copy"}</button>
+          </div>
+
+          {/* Stat cards — compact row */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:28 }}>
+            {[
+              { label:"Total Alumni", value:stats.total, sub:"Since 2015", color:B.purple, bg:`${B.purple}0D`, icon:"🎓" },
+              { label:"Countries", value:stats.countries, sub:"Global reach", color:B.teal, bg:`${B.teal}12`, icon:"🌍" },
+              { label:"Sectors", value:stats.sectors, sub:"Industries", color:B.gold, bg:`${B.gold}15`, icon:"🏢" },
+              { label:"Joined Today", value:stats.nouveaux, sub:"Last 24h", color:B.green, bg:`${B.green}12`, icon:"✨" },
+            ].map(s => (
+              <div key={s.label} style={{ background:B.white, borderRadius:12, padding:"18px 20px", border:`1px solid #E0DAF0`, display:"flex", alignItems:"center", gap:14, boxShadow:"0 2px 8px #00000006" }}>
+                <div style={{ width:44, height:44, borderRadius:10, background:s.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{s.icon}</div>
+                <div>
+                  <div style={{ fontFamily:"'Sora', sans-serif", fontSize:26, fontWeight:800, color:s.color, lineHeight:1 }}>{s.value}</div>
+                  <div style={{ fontSize:12, color:B.darkGray, fontWeight:600, marginTop:2 }}>{s.label}</div>
+                  <div style={{ fontSize:11, color:B.gray }}>{s.sub}</div>
+                </div>
               </div>
             ))}
           </div>
-          <SocialFeed user={user} userName="Admin" isAdmin={true} />
-          <AlumniMap alumni={alumni} />
-          {byCert.length > 0 && <div style={{ background: B.purpleMid, borderRadius: 18, padding: 24, border: `1px solid ${B.purpleLight}33` }}>
-            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>📜 Certifications</div>
-            {byCert.sort((a, b) => b.n - a.n).map(({ c, n }) => (
-              <div key={c} style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
-                <div style={{ width: 160, fontSize: 13, color: B.offWhite, flexShrink: 0 }}>{c}</div>
-                <div style={{ flex: 1, height: 8, background: `${B.purpleLight}44`, borderRadius: 4, overflow: "hidden" }}><div style={{ width: `${(n / Math.max(alumni.length, 1)) * 100}%`, height: "100%", background: `linear-gradient(90deg, ${B.gold}, ${B.teal})`, borderRadius: 4 }} /></div>
-                <div style={{ fontSize: 13, color: B.gold, fontWeight: 700, width: 24, textAlign: "right" }}>{n}</div>
+
+          {/* 2-column grid: left = charts, right = feed */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 400px", gap:24, alignItems:"start" }}>
+
+            {/* LEFT COLUMN */}
+            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+
+              {/* Map */}
+              <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:24, boxShadow:"0 2px 8px #00000006" }}>
+                <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>🗺️ Alumni World Map</div>
+                <AlumniMap alumni={alumni} />
               </div>
-            ))}
-          </div>}
-          {bySector.length > 0 && <div style={{ background: B.purpleMid, borderRadius: 18, padding: 24, border: `1px solid ${B.purpleLight}33` }}>
-            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>🏢 Sectors</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {bySector.sort((a, b) => b.n - a.n).map(({ s, n }, i) => { const cols = [B.teal, B.gold, B.purpleLight, B.green, B.gray]; const col = cols[i % cols.length]; return <div key={s} style={{ background: `${col}22`, border: `1px solid ${col}44`, borderRadius: 10, padding: "8px 16px", display: "flex", gap: 10, alignItems: "center" }}><span style={{ color: col, fontWeight: 700 }}>{n}</span><span style={{ fontSize: 13, color: B.offWhite }}>{s}</span></div>; })}
+
+              {/* Certifications */}
+              {byCert.length > 0 && (
+                <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:24, boxShadow:"0 2px 8px #00000006" }}>
+                  <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>📜 Certifications</div>
+                  {byCert.sort((a,b)=>b.n-a.n).map(({c,n})=>(
+                    <div key={c} style={{ display:"flex", gap:12, alignItems:"center", marginBottom:10 }}>
+                      <div style={{ width:150, fontSize:12, color:B.darkGray, flexShrink:0 }}>{c}</div>
+                      <div style={{ flex:1, height:7, background:"#F0EAF8", borderRadius:4, overflow:"hidden" }}>
+                        <div style={{ width:`${(n/Math.max(alumni.length,1))*100}%`, height:"100%", background:`linear-gradient(90deg,${B.purple},${B.purpleLight})`, borderRadius:4 }} />
+                      </div>
+                      <div style={{ fontSize:12, color:B.purple, fontWeight:700, width:20, textAlign:"right" }}>{n}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sectors */}
+              {bySector.length > 0 && (
+                <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:24, boxShadow:"0 2px 8px #00000006" }}>
+                  <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>🏢 Sectors</div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                    {bySector.sort((a,b)=>b.n-a.n).map(({s,n},i)=>{
+                      const cols=[B.teal,B.gold,B.purpleLight,B.green,B.gray]; const col=cols[i%cols.length];
+                      return <div key={s} style={{ background:`${col}12`, border:`1px solid ${col}33`, borderRadius:8, padding:"6px 14px", display:"flex", gap:8, alignItems:"center" }}>
+                        <span style={{ color:col, fontWeight:800, fontSize:14 }}>{n}</span>
+                        <span style={{ fontSize:12, color:B.darkGray }}>{s}</span>
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>}
+
+            {/* RIGHT COLUMN — Feed */}
+            <div style={{ background:"transparent" }}>
+              <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>📸 Community Feed</div>
+              <SocialFeed user={user} userName="Admin" isAdmin={true} />
+            </div>
+          </div>
         </div>
       )}
-      {tab === "directory" && <Directory alumni={alumni} onDelete={handleDelete} isAdmin={true} />}
-      {tab === "map" && <div style={{ display: "flex", flexDirection: "column", gap: 20 }}><div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>Alumni World Map</div><AlumniMap alumni={alumni} /></div>}
-      {tab === "chat" && <ChatPanel user={user} userName="Admin" />}
-      {tab === "stories" && <Stories alumni={alumni} />}
-      {tab === "resources" && <ResourceLibrary user={user} isAdmin={true} />}
-      {tab === "aotm" && <div style={{ display: "flex", flexDirection: "column", gap: 20 }}><div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800 }}>🏆 Alumni of the Month</div><AlumniOfTheMonth alumni={alumni} isAdmin={true} /></div>}
-      {tab === "jobs" && <JobBoard user={user} isAdmin={true} />}
-      {tab === "mentorship" && <Mentorship user={user} userName="Admin" alumni={alumni} />}
-      {tab === "certs" && <CertTracker user={user} userName="Admin" isAdmin={true} allAlumni={alumni} />}
-      {tab === "events" && <Events user={user} isAdmin={true} />}
-      {tab === "groups" && <StudyGroups user={user} userName="Admin" />}
+
+      {tab !== "dashboard" && (
+        <div style={{ maxWidth:1100, margin:"0 auto", padding:32 }}>
+          {tab === "directory" && <Directory alumni={alumni} onDelete={handleDelete} isAdmin={true} />}
+          {tab === "map" && <div style={{ display:"flex", flexDirection:"column", gap:20 }}><div style={{ fontFamily:"'Sora', sans-serif", fontSize:22, fontWeight:800, color:B.purple }}>Alumni World Map</div><AlumniMap alumni={alumni} /></div>}
+          {tab === "chat" && <ChatPanel user={user} userName="Admin" />}
+          {tab === "stories" && <Stories alumni={alumni} />}
+          {tab === "resources" && <ResourceLibrary user={user} isAdmin={true} />}
+          {tab === "aotm" && <div style={{ display:"flex", flexDirection:"column", gap:20 }}><div style={{ fontFamily:"'Sora', sans-serif", fontSize:22, fontWeight:800, color:B.purple }}>🏆 Alumni of the Month</div><AlumniOfTheMonth alumni={alumni} isAdmin={true} /></div>}
+          {tab === "jobs" && <JobBoard user={user} isAdmin={true} />}
+          {tab === "mentorship" && <Mentorship user={user} userName="Admin" alumni={alumni} />}
+          {tab === "certs" && <CertTracker user={user} userName="Admin" isAdmin={true} allAlumni={alumni} />}
+          {tab === "events" && <Events user={user} isAdmin={true} />}
+          {tab === "groups" && <StudyGroups user={user} userName="Admin" />}
+        </div>
+      )}
     </AppLayout>
   );
 }
