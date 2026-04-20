@@ -2018,29 +2018,35 @@ function AdminDashboard({ user }) {
             ))}
           </div>
 
-          {/* 2-column grid: left = charts, right = feed */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 400px", gap:24, alignItems:"start" }}>
+          {/* 2-column grid: left = feed, right = map + charts */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 380px", gap:24, alignItems:"start" }}>
 
-            {/* LEFT COLUMN */}
+            {/* LEFT COLUMN — Feed */}
+            <div>
+              <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>📸 Community Feed</div>
+              <SocialFeed user={user} userName="Admin" isAdmin={true} />
+            </div>
+
+            {/* RIGHT COLUMN — Map + Charts */}
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
               {/* Map */}
-              <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:24, boxShadow:"0 2px 8px #00000006" }}>
-                <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>🗺️ Alumni World Map</div>
+              <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:20, boxShadow:"0 2px 8px #00000006" }}>
+                <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:14, color:B.purple, marginBottom:12 }}>🗺️ Alumni World Map</div>
                 <AlumniMap alumni={alumni} />
               </div>
 
               {/* Certifications */}
               {byCert.length > 0 && (
-                <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:24, boxShadow:"0 2px 8px #00000006" }}>
-                  <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>📜 Certifications</div>
+                <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:20, boxShadow:"0 2px 8px #00000006" }}>
+                  <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:14, color:B.purple, marginBottom:14 }}>📜 Certifications</div>
                   {byCert.sort((a,b)=>b.n-a.n).map(({c,n})=>(
-                    <div key={c} style={{ display:"flex", gap:12, alignItems:"center", marginBottom:10 }}>
-                      <div style={{ width:150, fontSize:12, color:B.darkGray, flexShrink:0 }}>{c}</div>
-                      <div style={{ flex:1, height:7, background:"#F0EAF8", borderRadius:4, overflow:"hidden" }}>
+                    <div key={c} style={{ display:"flex", gap:10, alignItems:"center", marginBottom:10 }}>
+                      <div style={{ width:130, fontSize:11, color:B.darkGray, flexShrink:0 }}>{c}</div>
+                      <div style={{ flex:1, height:6, background:"#F0EAF8", borderRadius:4, overflow:"hidden" }}>
                         <div style={{ width:`${(n/Math.max(alumni.length,1))*100}%`, height:"100%", background:`linear-gradient(90deg,${B.purple},${B.purpleLight})`, borderRadius:4 }} />
                       </div>
-                      <div style={{ fontSize:12, color:B.purple, fontWeight:700, width:20, textAlign:"right" }}>{n}</div>
+                      <div style={{ fontSize:12, color:B.purple, fontWeight:700, width:18, textAlign:"right" }}>{n}</div>
                     </div>
                   ))}
                 </div>
@@ -2048,25 +2054,19 @@ function AdminDashboard({ user }) {
 
               {/* Sectors */}
               {bySector.length > 0 && (
-                <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:24, boxShadow:"0 2px 8px #00000006" }}>
-                  <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>🏢 Sectors</div>
+                <div style={{ background:B.white, borderRadius:14, border:`1px solid #E0DAF0`, padding:20, boxShadow:"0 2px 8px #00000006" }}>
+                  <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:14, color:B.purple, marginBottom:14 }}>🏢 Sectors</div>
                   <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
                     {bySector.sort((a,b)=>b.n-a.n).map(({s,n},i)=>{
                       const cols=[B.teal,B.gold,B.purpleLight,B.green,B.gray]; const col=cols[i%cols.length];
-                      return <div key={s} style={{ background:`${col}12`, border:`1px solid ${col}33`, borderRadius:8, padding:"6px 14px", display:"flex", gap:8, alignItems:"center" }}>
-                        <span style={{ color:col, fontWeight:800, fontSize:14 }}>{n}</span>
-                        <span style={{ fontSize:12, color:B.darkGray }}>{s}</span>
+                      return <div key={s} style={{ background:`${col}12`, border:`1px solid ${col}33`, borderRadius:8, padding:"5px 12px", display:"flex", gap:8, alignItems:"center" }}>
+                        <span style={{ color:col, fontWeight:800, fontSize:13 }}>{n}</span>
+                        <span style={{ fontSize:11, color:B.darkGray }}>{s}</span>
                       </div>;
                     })}
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* RIGHT COLUMN — Feed */}
-            <div style={{ background:"transparent" }}>
-              <div style={{ fontFamily:"'Sora', sans-serif", fontWeight:700, fontSize:15, color:B.purple, marginBottom:16 }}>📸 Community Feed</div>
-              <SocialFeed user={user} userName="Admin" isAdmin={true} />
             </div>
           </div>
         </div>
